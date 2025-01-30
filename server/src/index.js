@@ -1,16 +1,17 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
+const userRoutes = require('./routes/userRoutes'); // Adjust the path
+
 const app = express();
+app.use(express.json());
+app.use(cookieParser()); // To parse cookies
 
-// Middleware
-app.use(express.json()); // Parse JSON requests
+// Use the user routes
+app.use('/user', userRoutes);
 
-// Routes
-app.get('/', (req, res) => {
-    res.send('Welcome to your Express.js app!');
-});
+// MongoDB connection and other app setup here...
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+app.listen(5000, () => {
+  console.log('Server is running on port 5000');
 });
