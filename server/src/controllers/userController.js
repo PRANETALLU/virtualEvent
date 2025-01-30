@@ -7,7 +7,7 @@ const secret = process.env.SECRET_KEY; // Ideally, use environment variables for
 
 // Sign up logic
 exports.signup = async (req, res) => {
-    const { name, username, password } = req.body;
+    const { email, username, password } = req.body;
 
     try {
         // Check if username already exists
@@ -20,7 +20,7 @@ exports.signup = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         // Create a new user
-        const newUser = new User({ name, username, password: hashedPassword });
+        const newUser = new User({ username, email, password: hashedPassword });
         await newUser.save();
 
         res.status(201).json({ newUser, message: 'User created successfully' });
@@ -30,33 +30,26 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
-
-    try {
-        const userDoc = await User.findOne({ email });
-
-        if (!userDoc) { // If email does not exist
-            return res.status(404).json("Invalid email");
+    const { username, password } = req.body;
+    const userDoc = await User.findOne({ username });
+    if (!userDoc) { // if username does not exist
+      res.status(404).json("Invalid username");
+      return;
+    }
+    if (password === userDoc.password) { // if password is correct
+      jwt.sign({ username, id: userDoc._id }, secret, {}, (err, token) => {
+        if (err) {
+          throw err;
         }
-
-        // Compare the password
-        const isPasswordValid = await bcrypt.compare(password, userDoc.password);
-
-        if (isPasswordValid) { // If password is correct
-            // Sign a JWT token
-            const token = userDoc.generateToken();
-
-            // Send the token in a cookie and return user data
-            res.cookie('token', token, { httpOnly: true, secure: true }).json({
-                id: userDoc._id,
-                name: userDoc.name,
-                email: userDoc.email,
-                token, // Send the token in the response as well
-            });
-        } else {
-            res.status(400).json("Invalid Password");
+        else {
+          res.cookie('token', token).json({
+            id: userDoc._id,
+            username
+          });
         }
-    } catch (err) {
-        res.status(500).json("Server error");
+      });
+    }
+    else {
+      res.status(400).json("Invalid Password")
     }
 };

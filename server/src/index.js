@@ -27,11 +27,8 @@ db.once('open', () => {
   console.log('MongoDB connection successful');
 });
 
-
 // Use the user routes
 app.use('/user', userRoutes);
-
-// MongoDB connection and other app setup here...
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');
