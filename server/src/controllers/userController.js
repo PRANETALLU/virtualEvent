@@ -1,8 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+require('dotenv').config();
 
-const secret = 'dsadsaewqerffrfrgrgrgbth5657'; // Ideally, use environment variables for sensitive data
+const secret = process.env.SECRET_KEY; // Ideally, use environment variables for sensitive data
 
 // Sign up logic
 exports.signup = async (req, res) => {
