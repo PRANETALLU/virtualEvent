@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
-const userRoutes = require('./routes/userRoutes'); // Adjust the path
+const userRoutes = require('./routes/userRoutes'); 
+const eventRoutes = require('./routes/eventRoutes'); 
 require('dotenv').config(); 
 
 const app = express();
@@ -29,6 +30,7 @@ db.once('open', () => {
 
 // Use the user routes
 app.use('/user', userRoutes);
+app.use('/events', eventRoutes);
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');

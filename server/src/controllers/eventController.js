@@ -3,35 +3,52 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const secret = process.env.SECRET_KEY;
+/*const secret = process.env.SECRET_KEY;
 
 // Middleware for token verification
-const verifyToken = require('../middleware/authMiddleware');
+const verifyToken = require('../middleware/authMiddleware');*/
 
 // Create Event
 exports.createEvent = async (req, res) => {
-  const { title, description, date, time, venue, price, liveStreamUrl, chatEnabled, recordingUrl } = req.body;
+  const { title, description, dateTime, venue, price } = req.body;
 
   try {
-    const { user } = req; // User is added to the request object by verifyToken middleware
+    // Debug log to check what's coming from the middleware
+    console.log('Full request object:', {
+      user: req.user,
+      headers: req.headers
+    });
+
+    // Verify we have a user before proceeding
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        message: 'Unauthorized - No valid user found'
+      });
+    }
 
     const newEvent = new Event({
       title,
       description,
-      date,
-      time,
+      dateTime,
       venue,
       price,
-      organizer: user._id, // Use decoded user data from the token
-      liveStreamUrl,
-      chatEnabled,
-      recordingUrl
+      organizer: req.user.id,  // Make sure this is getting set
+      attendees: [req.user.id]
     });
 
-    await newEvent.save();
-    res.status(201).json({ newEvent, message: 'Event created successfully' });
+    const savedEvent = await newEvent.save();
+    
+    res.status(201).json({
+      message: 'Event created successfully',
+      event: savedEvent
+    });
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Detailed error:', err);
+    res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
   }
 };
 
@@ -111,13 +128,12 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    if (event.organizer.toString() !== user._id.toString()) {
+    if (event.organizer.toString() !== user.id.toString()) {
       return res.status(403).json({ message: "You are not authorized to delete this event" });
     }
+    const deletedEvent = await Event.findByIdAndDelete(id);
 
-    await event.remove();
-
-    res.status(200).json({ message: 'Event deleted successfully' });
+    res.status(200).json({ deletedEvent, message: 'Event deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -136,11 +152,11 @@ exports.addAttendee = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    if (event.attendees.some(attendee => attendee._id.toString() === user._id.toString())) {
+    if (event.attendees.some(attendee => attendee._id.toString() === user.id.toString())) {
       return res.status(400).json({ message: "You are already attending this event" });
     }
 
-    event.attendees.push(user._id);
+    event.attendees.push(user.id);
     await event.save();
 
     res.status(200).json({ event, message: 'Attendee added successfully' });
