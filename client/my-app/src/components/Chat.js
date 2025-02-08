@@ -1,39 +1,43 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:5000'); // Replace with your backend URL
-
-const Chat = ({ eventId }) => {
+const ChatRoom = ({ eventId }) => {
+  const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
+  const [username, setUsername] = useState('User'); // You can set this dynamically
 
   useEffect(() => {
-    // Join the event chat room when the component mounts
-    socket.emit('joinEventChat', eventId);
+    const socket = io('http://localhost:5000', { withCredentials: true });
 
-    // Listen for incoming chat messages specific to this event
-    socket.on('chatMessage', (msg) => {
-      setChatMessages((prevMessages) => [...prevMessages, msg]);
+    // Join event-specific chat room
+    socket.emit('join_event', eventId);
+
+    // Listen for incoming messages
+    socket.on('receive_message', (data) => {
+      setMessages((prevMessages) => [...prevMessages, data]);
     });
 
-    // Cleanup on component unmount
+    // Cleanup when component unmounts
     return () => {
-      socket.off('chatMessage');
+      socket.disconnect();
     };
   }, [eventId]);
 
   const sendMessage = () => {
-    socket.emit('chatMessage', message, eventId); // Send message to the event's chat room
-    setMessage('');
+    const socket = io('http://localhost:5000');
+    socket.emit('send_message', { eventId, message, username });
+    setMessage(''); // Clear input after sending
   };
 
   return (
     <div>
-      <h3>Chat for Event {eventId}</h3>
       <div>
-        {chatMessages.map((msg, index) => (
-          <p key={index}>{msg}</p>
-        ))}
+        <h2>Event Chat</h2>
+        <div>
+          {messages.map((msg, index) => (
+            <p key={index}><strong>{msg.username}:</strong> {msg.message}</p>
+          ))}
+        </div>
       </div>
       <input 
         type="text" 
@@ -46,4 +50,4 @@ const Chat = ({ eventId }) => {
   );
 };
 
-export default Chat;
+export default ChatRoom;

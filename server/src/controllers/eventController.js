@@ -164,3 +164,79 @@ exports.addAttendee = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+exports.startLivestream = async (req, res) => {
+  const { eventId } = req.params;
+  
+  try {
+    const { user } = req; // User is added to the request object by verifyToken middleware
+
+    // Find the event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Check if the user is the organizer
+    if (event.organizer.toString() !== user.id.toString()) {
+      return res.status(403).json({ message: "Only the organizer can start the livestream" });
+    }
+
+    // Generate a livestream link
+    const streamUrl = `http://localhost:3000/watch/${eventId}`;
+
+    // Update event with the livestream link
+    event.liveStreamUrl = streamUrl;
+    await event.save();
+
+    res.status(200).json({ event, message: "Livestream started successfully", streamUrl });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.stopLivestream = async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    const { user } = req;
+
+    // Find the event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Check if the user is the organizer
+    if (event.organizer.toString() !== user.id.toString()) {
+      return res.status(403).json({ message: "Only the organizer can stop the livestream" });
+    }
+
+    // Remove livestream URL
+    event.liveStreamUrl = "";
+    await event.save();
+
+    res.status(200).json({ message: "Livestream stopped successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.getLivestream = async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (!event.liveStreamUrl) {
+      return res.status(400).json({ message: "Livestream has not started yet" });
+    }
+
+    res.status(200).json({ liveStreamUrl: event.liveStreamUrl });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
