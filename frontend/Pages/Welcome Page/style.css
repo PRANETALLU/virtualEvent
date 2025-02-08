@@ -1,0 +1,77 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: black;
+    color: white;
+    text-align: center;
+}
+
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+
+.logo img {
+    width: 250px; 
+    height: auto;
+}
+
+
+.about-link {
+    color: #00CFFF;
+    text-decoration: none;
+    font-size: 36px;
+    font-weight: bold;
+    margin-right: 30px;
+}
+
+.about-link:hover {
+    text-decoration: underline;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+}
+
+h1 {
+    font-size: 60px;
+    font-weight: bold;
+}
+
+.highlight {
+    color: #00CFFF;
+}
+
+/* Buttons */
+.buttons {
+    margin-top: 10px;
+}
+
+.btn {
+    background-color: #00CFFF;
+    color: rgb(255, 255, 255);
+    border: none;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    padding: 12px 25px;
+    letter-spacing: 3px;
+    width: 150px;
+    height: 50px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 7px;
+    cursor: pointer;
+    margin: 10px;
+}
+
+.btn:hover {
+    background-color: #0b3d4d;
+}
