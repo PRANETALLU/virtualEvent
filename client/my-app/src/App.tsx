@@ -7,13 +7,11 @@ import Welcome from "./pages/Welcome";
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <LivestreamProvider>
           <Routes>
             <Route path="/" element={<Welcome />}/>
             <Route path="/organizer/:eventId" element={<OrganizerDashboard eventId="123" />} />
             <Route path="/watch/:eventId" element={<LivestreamPage />} />
           </Routes>
-      </LivestreamProvider>
     </BrowserRouter>
   );
 };

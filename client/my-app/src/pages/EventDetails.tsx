@@ -22,7 +22,7 @@ const EventDetails = () => {
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/events/${eventId}`);
+        const { data } = await axios.get(`http://localhost:5000/events/${eventId}`);
         setEvent(data);
         setLoading(false);
       } catch (error) {
