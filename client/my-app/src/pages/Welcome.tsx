@@ -98,7 +98,7 @@ const Welcome: React.FC = () => {
     <Container>
       <Header>
         <LogoContainer>
-          <LogoImg src="/streamifylogo.png" alt="Streamify Logo" />
+          <LogoImg src="streamifylogo.png" alt="Streamify Logo" />
         </LogoContainer>
         <nav>
           <AboutLink href="#">ABOUT</AboutLink>
