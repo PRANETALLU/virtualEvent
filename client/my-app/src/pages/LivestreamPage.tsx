@@ -1,46 +1,49 @@
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
-import { useLivestream } from "../context/LivestreamContext";
-import SimplePeer from "simple-peer";
+import React, { useEffect, useRef, useState } from "react";
+import io from "socket.io-client";
 
-const LivestreamPage: React.FC = () => {
-  const { eventId } = useParams<{ eventId: string }>();
-  const { streamUrl, fetchLivestream } = useLivestream();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
+const socket = io("http://localhost:3000");
 
-  useEffect(() => {
-    if (eventId) {
-      fetchLivestream(eventId);
-    }
-  }, [eventId]);
+const LiveStream: React.FC = () => {
+  const myVideoRef = useRef<HTMLVideoElement | null>(null);
+  const streamVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
-    if (streamUrl) {
-      const peerInstance = new SimplePeer({ initiator: false, trickle: false });
+    socket.on("view", (data: MediaStream) => {
+      if (streamVideoRef.current) {
+        streamVideoRef.current.srcObject = data;
+      }
+    });
 
-      peerInstance.on("signal", (data) => console.log("Signal Data:", data));
+    return () => {
+      socket.off("view");
+    };
+  }, []);
 
-      peerInstance.on("stream", (stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      });
+  const startStreaming = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (myVideoRef.current) {
+        myVideoRef.current.srcObject = stream;
+      }
+      setStreaming(true);
 
-      setPeer(peerInstance);
+      setInterval(() => {
+        socket.emit("stream", stream);
+      }, 100);
+    } catch (error) {
+      console.error("Error accessing webcam:", error);
     }
-  }, [streamUrl]);
+  };
 
   return (
     <div>
-      <h2>Livestream</h2>
-      {streamUrl ? (
-        <video ref={videoRef} autoPlay playsInline controls />
-      ) : (
-        <p>Livestream not available</p>
-      )}
+      <h2>Live Streaming</h2>
+      <video ref={myVideoRef} autoPlay playsInline></video>
+      <video ref={streamVideoRef} autoPlay playsInline></video>
+      {!streaming && <button onClick={startStreaming}>Start Streaming</button>}
     </div>
   );
 };
 
-export default LivestreamPage;
+export default LiveStream;

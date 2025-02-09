@@ -1,7 +1,8 @@
 // src/pages/Home.tsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useUser } from "../context/UserContext";
 
 interface Event {
   _id: string;
@@ -15,12 +16,24 @@ interface Event {
 const Home = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
+  const {setUserInfo} = useUser();
+
+  const logout = async () => {
+    try {
+      await axios.post('http://localhost:5000/user/logout');
+      setUserInfo(null); 
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error', error);
+    }
+  };
 
   // Fetch events from the backend
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/events');
+        const { data } = await axios.get('http://localhost:5000/events');
         setEvents(data);
         setLoading(false);
       } catch (error) {
@@ -38,6 +51,7 @@ const Home = () => {
 
   return (
     <div>
+      <button onClick={logout}>Logout</button>
       <h1>Upcoming Events</h1>
       {events.length === 0 ? (
         <p>No events available at the moment.</p>

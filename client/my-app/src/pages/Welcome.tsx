@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 
 // Styled Components
@@ -94,6 +95,8 @@ const Button = styled.button`
 `;
 
 const Welcome: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <Container>
       <Header>
@@ -110,8 +113,8 @@ const Welcome: React.FC = () => {
           LIVE. <Highlight>CREATE.</Highlight> CONNECT
         </Title>
         <ButtonsContainer>
-          <Button>LOG IN</Button>
-          <Button>SIGN UP</Button>
+          <Button onClick={() => navigate("login")}>LOG IN</Button>
+          <Button onClick={() => navigate("signup")}>SIGN UP</Button>
         </ButtonsContainer>
       </Main>
     </Container>

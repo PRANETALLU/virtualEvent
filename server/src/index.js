@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
   }
 });
@@ -21,7 +21,7 @@ const io = socketIo(server, {
 app.use(express.json());
 app.use(cookieParser()); // To parse cookies
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:5173',
     credentials: true,
     allowedHeaders: 'Content-Type'
 }));
@@ -62,6 +62,13 @@ io.on('connection', (socket) => {
   // When a user disconnects
   socket.on('disconnect', () => {
     console.log('User disconnected');
+  });
+});
+
+
+io.on("connection", (socket) => {
+  socket.on("stream", (data) => {
+    socket.broadcast.emit("view", data);
   });
 });
 
