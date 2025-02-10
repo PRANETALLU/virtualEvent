@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface EventDetails {
   title: string;
@@ -16,6 +16,7 @@ interface EventDetails {
 
 const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -34,6 +35,17 @@ const EventDetails = () => {
     fetchEventDetails();
   }, [eventId]);
 
+  const startLivestream = async () => {
+    try {
+      const { data } = await axios.post(`http://localhost:5000/events/${eventId}/livestream/start`);
+      setEvent(data.event); // Update the event details with the stream URL
+      // Redirect to the livestream page
+      navigate(`/watch/${eventId}`);
+    } catch (error) {
+      console.error('Error starting livestream:', error);
+    }
+  };
+
   if (loading) {
     return <div>Loading event details...</div>;
   }
@@ -51,13 +63,15 @@ const EventDetails = () => {
       <p><strong>Price:</strong> ${event.price || 'Free'}</p>
       <p><strong>Attendees:</strong> {event.attendees.length}</p>
 
-      {event.liveStreamUrl && (
+      {event.liveStreamUrl ? (
         <div>
           <h3>Live Streaming</h3>
           <a href={event.liveStreamUrl} target="_blank" rel="noopener noreferrer">
             Click here to watch the live stream
           </a>
         </div>
+      ) : (
+        <button onClick={startLivestream}>Start Live Stream</button>
       )}
     </div>
   );

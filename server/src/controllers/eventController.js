@@ -178,12 +178,13 @@ exports.startLivestream = async (req, res) => {
     }
 
     // Check if the user is the organizer
+    console.log("User ID", user.id.toString())
     if (event.organizer.toString() !== user.id.toString()) {
       return res.status(403).json({ message: "Only the organizer can start the livestream" });
     }
 
     // Generate a livestream link
-    const streamUrl = `http://localhost:3000/watch/${eventId}`;
+    const streamUrl = `http://localhost:5173/watch/${eventId}`;
 
     // Update event with the livestream link
     event.liveStreamUrl = streamUrl;
@@ -212,11 +213,12 @@ exports.stopLivestream = async (req, res) => {
       return res.status(403).json({ message: "Only the organizer can stop the livestream" });
     }
 
-    // Remove livestream URL
+    // Remove livestream URL and mark the event as ended
     event.liveStreamUrl = "";
+    event.ended = true;
     await event.save();
 
-    res.status(200).json({ message: "Livestream stopped successfully" });
+    res.status(200).json({ message: "Livestream stopped and event ended successfully" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

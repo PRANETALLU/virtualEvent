@@ -11,6 +11,7 @@ const EventSchema = new mongoose.Schema({
   liveStreamUrl: { type: String, default: "" }, // WebRTC-based stream link
   chatEnabled: { type: Boolean, default: true },
   recordingUrl: { type: String, default: "" }, // Optional recorded session
+  ended: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

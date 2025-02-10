@@ -67,8 +67,18 @@ io.on('connection', (socket) => {
 
 
 io.on("connection", (socket) => {
-  socket.on("stream", (data) => {
-    socket.broadcast.emit("view", data);
+  console.log("User connected");
+
+  socket.on("stream", (stream) => {
+    socket.broadcast.emit("view", stream);
+  });
+
+  socket.on("stop-stream", () => {
+    socket.broadcast.emit("view", null);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
   });
 });
 

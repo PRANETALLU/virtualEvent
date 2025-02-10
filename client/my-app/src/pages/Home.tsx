@@ -17,7 +17,7 @@ const Home = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
-  const {setUserInfo} = useUser();
+  const {userInfo, setUserInfo} = useUser();
 
   const logout = async () => {
     try {
@@ -52,6 +52,7 @@ const Home = () => {
   return (
     <div>
       <button onClick={logout}>Logout</button>
+      <h1>{userInfo?.username}</h1>
       <h1>Upcoming Events</h1>
       {events.length === 0 ? (
         <p>No events available at the moment.</p>
