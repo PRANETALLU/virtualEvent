@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, BrowserRouter } from "react-router-dom";
 import UserContextProvider from './context/UserContext';
 import OrganizerDashboard from "./components/OrganizerDashboard";
-import LiveStream from "./pages/LivestreamPage";
+import LiveStream from "./pages/LiveStream";
 import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
