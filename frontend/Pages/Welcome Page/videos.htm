@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamify - Videos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-box">
+                <img src="streamifylogo.png" alt="Logo" class="logo-img">
+            </div>
+        </div>
+        <nav>
+            <a href="#" class="logout-link">LOG OUT</a>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Browse Live Events</h1>
+        <div class="search-container">
+            <input type="text" id="searchBar" placeholder="Search for events..." class="search-bar">
+        </div>
+        <div class="video-list" id="videoList">
+            <div class="video-item" data-title="Event 1">
+                <img src="thumbnail1.jpg" alt="Video 1" class="video-thumbnail">
+                <p class="video-title">Event 1</p>
+            </div>
+            <div class="video-item" data-title="Event 2">
+                <img src="thumbnail2.jpg" alt="Video 2" class="video-thumbnail">
+                <p class="video-title">Event 2</p>
+            </div>
+            <div class="video-item" data-title="Event 3">
+                <img src="thumbnail3.jpg" alt="Video 3" class="video-thumbnail">
+                <p class="video-title">Event 3</p>
+            </div>
+            <!-- Add more video items here -->
+        </div>
+    </main>
+
+    <script>
+        const searchBar = document.getElementById('searchBar');
+        const videoList = document.getElementById('videoList');
+        const videoItems = videoList.getElementsByClassName('video-item');
+
+        // Function to filter videos based on the search input
+        searchBar.addEventListener('input', function() {
+            const searchTerm = searchBar.value.toLowerCase();
+
+            Array.from(videoItems).forEach(item => {
+                const videoTitle = item.getAttribute('data-title').toLowerCase();
+                if (videoTitle.includes(searchTerm)) {
+                    item.style.display = 'block'; // Show matching video
+                } else {
+                    item.style.display = 'none'; // Hide non-matching video
+                }
+            });
+        });
+    </script>
+</body>
+</html>
