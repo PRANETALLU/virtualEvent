@@ -1,31 +1,40 @@
-import React, { createContext, useState, ReactNode } from "react";
+import React, { createContext, useState, useEffect, ReactNode } from "react";
 
 // Define the User interface with expected properties
 interface User {
   id?: string;
   username?: string;
-  email?: string;
-  name?: string;
-  // Add other user properties as needed
+  token?: string;
 }
 
 // Define the context type with proper typing
 interface UserContextType {
-  userInfo: User | null;  // Allow null value
-  setUserInfo: React.Dispatch<React.SetStateAction<User | null>>;  // Set state type to User | null
+  userInfo: User | null;
+  setUserInfo: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 // Create the context with an initial undefined value
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Define props interface for the provider component
 interface UserContextProviderProps {
   children: ReactNode;
 }
 
-// Create the provider component with proper typing
 const UserContextProvider = ({ children }: UserContextProviderProps) => {
-  const [userInfo, setUserInfo] = useState<User | null>(null); // Initialize userInfo as null
+  // Retrieve userInfo from localStorage
+  const storedUser = localStorage.getItem("userInfo");
+  const [userInfo, setUserInfo] = useState<User | null>(
+    storedUser ? JSON.parse(storedUser) : null
+  );
+
+  // Update localStorage whenever userInfo changes
+  useEffect(() => {
+    if (userInfo) {
+      localStorage.setItem("userInfo", JSON.stringify(userInfo));
+    } else {
+      localStorage.removeItem("userInfo");
+    }
+  }, [userInfo]);
 
   return (
     <UserContext.Provider value={{ userInfo, setUserInfo }}>
@@ -34,7 +43,6 @@ const UserContextProvider = ({ children }: UserContextProviderProps) => {
   );
 };
 
-// Add a custom hook for using the context
 export const useUser = () => {
   const context = React.useContext(UserContext);
   if (context === undefined) {

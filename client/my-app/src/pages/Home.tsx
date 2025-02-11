@@ -8,7 +8,7 @@ interface Event {
   _id: string;
   title: string;
   description: string;
-  date: string;
+  dateTime: string;
   price: number;
   venue: string;
 }
@@ -17,14 +17,18 @@ const Home = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [open, setOpen] = useState<boolean>(false);
-  const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', price: '', venue: '' });
+  const [newEvent, setNewEvent] = useState({ title: '', description: '', dateTime: '', price: '', venue: '' });
   const navigate = useNavigate();
   const { userInfo, setUserInfo } = useUser();
 
   useEffect(() => {
+    console.log('User Info', userInfo)
+  }, [userInfo])
+
+  useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/events/create');
+        const { data } = await axios.get('http://localhost:5000/events');
         setEvents(data);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -40,6 +44,7 @@ const Home = () => {
     try {
       await axios.post('http://localhost:5000/user/logout');
       setUserInfo(null);
+      localStorage.removeItem("userInfo");
       navigate('/');
     } catch (error) {
       console.error('Logout error', error);
@@ -48,7 +53,10 @@ const Home = () => {
 
   const handleCreateEvent = async () => {
     try {
-      const { data } = await axios.post('http://localhost:5000/events/create', newEvent);
+      console.log("Pass 1")
+      console.log(newEvent)
+      const { data } = await axios.post('http://localhost:5000/events/create', newEvent, {withCredentials: true});
+      console.log("Pass 2")
       setEvents([...events, data]);
       setOpen(false);
     } catch (error) {
@@ -69,7 +77,7 @@ const Home = () => {
         <DialogContent>
           <TextField label="Title" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })} />
           <TextField label="Description" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })} />
-          <TextField type="datetime-local" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} />
+          <TextField type="datetime-local" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, dateTime: e.target.value })} />
           <TextField label="Venue" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, venue: e.target.value })} />
           <TextField label="Price" type="number" fullWidth margin="dense" onChange={(e) => setNewEvent({ ...newEvent, price: e.target.value })} />
         </DialogContent>
@@ -85,11 +93,11 @@ const Home = () => {
         <p>No events available at the moment.</p>
       ) : (
         <div>
-          {events.map(({ _id, title, description, date, venue, price }) => (
+          {events.map(({ _id, title, description, dateTime, venue, price }) => (
             <div key={_id} style={styles.eventCard}>
               <h2>{title}</h2>
               <p>{description}</p>
-              <p><strong>Date:</strong> {new Date(date).toLocaleString()}</p>
+              <p><strong>Date:</strong> {new Date(dateTime).toLocaleString()}</p>
               <p><strong>Venue:</strong> {venue}</p>
               <p><strong>Price:</strong> ${price || 'Free'}</p>
               <Link to={`/events/${_id}`} style={styles.link}>

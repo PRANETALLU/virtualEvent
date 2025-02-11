@@ -11,21 +11,18 @@ const verifyToken = require('../middleware/authMiddleware');*/
 // Create Event
 exports.createEvent = async (req, res) => {
   const { title, description, dateTime, venue, price } = req.body;
-
+  console.log('Intro')
   try {
-    // Debug log to check what's coming from the middleware
-    console.log('Full request object:', {
-      user: req.user,
-      headers: req.headers
-    });
 
     // Verify we have a user before proceeding
+    console.log('User', req.user, req.user.id)
     if (!req.user || !req.user.id) {
       return res.status(401).json({
         message: 'Unauthorized - No valid user found'
       });
     }
 
+    console.log('Backend 1')
     const newEvent = new Event({
       title,
       description,
@@ -35,6 +32,7 @@ exports.createEvent = async (req, res) => {
       organizer: req.user.id,  // Make sure this is getting set
       attendees: [req.user.id]
     });
+    console.log('Backend 2')
 
     const savedEvent = await newEvent.save();
     
