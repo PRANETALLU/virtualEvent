@@ -1,6 +1,5 @@
 // src/pages/Login.tsx
-
-import React, {  useState } from 'react';
+import {  useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from "../context/UserContext";
@@ -17,16 +16,15 @@ const Login = () => {
         "http://localhost:5000/user/login",
         { username, password },
         {
-          withCredentials: true, // Ensure cookies are stored
+          withCredentials: true, 
           headers: {
             "Content-Type": "application/json",
           },
         }
       );
   
-      // Store user info (excluding token) in state & local storage
-      setUserInfo(data);
-      localStorage.setItem("userInfo", JSON.stringify(data));
+      setUserInfo({id: data.id, username: data.username, token: data.token});
+      localStorage.setItem("userInfo", JSON.stringify({id: data.id, username: data.username, token: data.token}));
   
       navigate("/home");
     } catch (error) {

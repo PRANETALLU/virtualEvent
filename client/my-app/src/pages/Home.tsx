@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import EventCard from '../components/EventCard';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 
 interface Event {
@@ -93,34 +94,13 @@ const Home = () => {
         <p>No events available at the moment.</p>
       ) : (
         <div>
-          {events.map(({ _id, title, description, dateTime, venue, price }) => (
-            <div key={_id} style={styles.eventCard}>
-              <h2>{title}</h2>
-              <p>{description}</p>
-              <p><strong>Date:</strong> {new Date(dateTime).toLocaleString()}</p>
-              <p><strong>Venue:</strong> {venue}</p>
-              <p><strong>Price:</strong> ${price || 'Free'}</p>
-              <Link to={`/events/${_id}`} style={styles.link}>
-                <Button variant="outlined">View Details</Button>
-              </Link>
-            </div>
+          {events.map((event) => (
+            <EventCard key={event._id} {...event} />
           ))}
         </div>
       )}
     </div>
   );
-};
-
-const styles = {
-  eventCard: {
-    marginBottom: '20px',
-    padding: '15px',
-    border: '1px solid #ccc',
-  },
-  link: {
-    textDecoration: 'none',
-    color: '#007bff',
-  },
 };
 
 export default Home;
