@@ -13,14 +13,24 @@ const Login = () => {
 
   const handleLogin = async () => {
     try {
-      const { data } = await axios.post('http://localhost:5000/user/login', {
-        username,
-        password,
-      });
-      setUserInfo(data); 
-      navigate('/home');
+      const { data } = await axios.post(
+        "http://localhost:5000/user/login",
+        { username, password },
+        {
+          withCredentials: true, // Ensure cookies are stored
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      // Store user info (excluding token) in state & local storage
+      setUserInfo(data);
+      localStorage.setItem("userInfo", JSON.stringify(data));
+  
+      navigate("/home");
     } catch (error) {
-      console.error('Login error', error);
+      console.error("Login error", error);
     }
   };
 
