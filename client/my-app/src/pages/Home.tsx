@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import EventCard from '../components/EventCard';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
@@ -19,8 +18,7 @@ const Home = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [open, setOpen] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({ title: '', description: '', dateTime: '', price: '', venue: '' });
-  const navigate = useNavigate();
-  const { userInfo, setUserInfo } = useUser();
+  const { userInfo } = useUser();
 
   useEffect(() => {
     console.log('User Info', userInfo)
@@ -41,17 +39,6 @@ const Home = () => {
     fetchEvents();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await axios.post('http://localhost:5000/user/logout');
-      setUserInfo(null);
-      localStorage.removeItem("userInfo");
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error', error);
-    }
-  };
-
   const handleCreateEvent = async () => {
     try {
       console.log("Pass 1")
@@ -67,7 +54,6 @@ const Home = () => {
 
   return (
     <div>
-      <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
       {userInfo && <h1>{userInfo.username}</h1>}
       
       <h1>Upcoming Events</h1>

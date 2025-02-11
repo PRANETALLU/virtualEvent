@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, BrowserRouter } from "react-router-dom";
+import { BrowserRouter as Routes, Route, BrowserRouter } from "react-router-dom";
 import UserContextProvider from './context/UserContext';
 import OrganizerDashboard from "./components/OrganizerDashboard";
 import LiveStream from "./pages/LiveStream";
@@ -7,11 +7,13 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import EventDetails from "./pages/EventDetails";
+import { Header } from "./components/Header";
 
 const App: React.FC = () => {
   return (
     <BrowserRouter>
       <UserContextProvider>
+        <Header />
         <Routes>
           <Route path="/" element={<Welcome />} />
           <Route path="/signup" element={<Signup />} />
