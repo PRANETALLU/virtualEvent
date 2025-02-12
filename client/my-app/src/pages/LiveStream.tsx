@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
 const socket = io("http://localhost:5000", { transports: ["websocket", "polling"] });
@@ -12,6 +13,7 @@ const LiveStream: React.FC<LiveStreamProps> = ({ eventId }) => {
   const streamVideoRef = useRef<HTMLVideoElement | null>(null);
   const [streaming, setStreaming] = useState(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     socket.on("view", (data: MediaStream) => {
@@ -66,6 +68,7 @@ const LiveStream: React.FC<LiveStreamProps> = ({ eventId }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
+      navigate("/home")
     } catch (error) {
       console.error("Error stopping stream:", error);
     }

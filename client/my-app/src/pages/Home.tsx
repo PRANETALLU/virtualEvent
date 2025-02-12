@@ -9,8 +9,14 @@ interface Event {
   title: string;
   description: string;
   dateTime: string;
-  price: number;
   venue: string;
+  price: number;
+  organizer: {
+    _id: string;
+    username: string; 
+    email: string; 
+  };
+  liveStreamUrl?: string;
 }
 
 const Home = () => {
