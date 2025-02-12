@@ -9,7 +9,7 @@ export const Header = () => {
 
     const handleLogout = async () => {
         try {
-          await axios.post('http://localhost:5000/user/logout');
+          await axios.post('http://localhost:5000/user/logout', {}, {withCredentials: true});
           setUserInfo(null);
           localStorage.removeItem("userInfo");
           navigate('/');

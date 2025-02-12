@@ -1,4 +1,4 @@
-import { BrowserRouter as Routes, Route, BrowserRouter } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import UserContextProvider from './context/UserContext';
 import OrganizerDashboard from "./components/OrganizerDashboard";
 import LiveStream from "./pages/LiveStream";
