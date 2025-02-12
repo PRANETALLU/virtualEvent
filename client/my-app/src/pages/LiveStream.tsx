@@ -1,53 +1,63 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import io from "socket.io-client";
+import { useUser } from "../context/UserContext";
 
 const socket = io("http://localhost:5000", { transports: ["websocket", "polling"] });
 
-interface LiveStreamProps {
-  eventId: string;
-}
-
-const LiveStream: React.FC<LiveStreamProps> = ({ eventId }) => {
+const LiveStream: React.FC = () => {
+  const { eventId } = useParams<{ eventId: string }>();
   const myVideoRef = useRef<HTMLVideoElement | null>(null);
   const streamVideoRef = useRef<HTMLVideoElement | null>(null);
   const [streaming, setStreaming] = useState(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const { userInfo } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    socket.on("view", (data: MediaStream) => {
+    socket.emit("join-room", eventId);
+
+    socket.on("receive-stream", (streamData: any) => {
       if (streamVideoRef.current) {
-        streamVideoRef.current.srcObject = data;
+        const stream = new MediaStream();
+        const videoTrack = new Blob([streamData], { type: "video/webm" });
+        stream.addTrack(new MediaStreamTrack(videoTrack));
+        streamVideoRef.current.srcObject = stream;
       }
     });
 
     return () => {
-      socket.off("view");
+      socket.off("receive-stream");
     };
-  }, []);
+  }, [eventId]);
 
-  const startStreaming = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      mediaStreamRef.current = stream;
+  useEffect(() => {
+    if (!userInfo) return;
+    
+    const startStreaming = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        mediaStreamRef.current = stream;
 
-      if (myVideoRef.current) {
-        myVideoRef.current.srcObject = stream;
+        if (myVideoRef.current) {
+          myVideoRef.current.srcObject = stream;
+        }
+
+        setStreaming(true);
+        socket.emit("start-stream", { eventId, userId: userInfo.id });
+
+        stream.getTracks().forEach((track) => {
+          track.onended = () => stopStreaming();
+        });
+
+        stream.oninactive = stopStreaming;
+      } catch (error) {
+        console.error("Error starting stream:", error);
       }
+    };
 
-      setStreaming(true);
-      socket.emit("stream", stream);
-
-      // API call to mark the event as live
-      await fetch(`http://localhost:5000/api/events/${eventId}/livestream/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (error) {
-      console.error("Error starting stream:", error);
-    }
-  };
+    if (userInfo.isOrganizer) startStreaming();
+  }, [userInfo]);
 
   const stopStreaming = async () => {
     try {
@@ -61,14 +71,14 @@ const LiveStream: React.FC<LiveStreamProps> = ({ eventId }) => {
       }
 
       setStreaming(false);
-      socket.emit("stop-stream");
+      socket.emit("stop-stream", eventId);
 
-      // API call to mark the event as ended
       await fetch(`http://localhost:5000/api/events/${eventId}/livestream/stop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      navigate("/home")
+
+      navigate("/home");
     } catch (error) {
       console.error("Error stopping stream:", error);
     }
@@ -77,12 +87,13 @@ const LiveStream: React.FC<LiveStreamProps> = ({ eventId }) => {
   return (
     <div>
       <h2>Live Streaming</h2>
-      <video ref={myVideoRef} autoPlay playsInline></video>
-      <video ref={streamVideoRef} autoPlay playsInline></video>
-      {!streaming ? (
-        <button onClick={startStreaming}>Start Streaming</button>
+      {userInfo?.isOrganizer ? (
+        <>
+          <video ref={myVideoRef} autoPlay playsInline></video>
+          {streaming && <button onClick={stopStreaming}>Stop Streaming</button>}
+        </>
       ) : (
-        <button onClick={stopStreaming}>Stop Streaming</button>
+        <video ref={streamVideoRef} autoPlay playsInline></video>
       )}
     </div>
   );

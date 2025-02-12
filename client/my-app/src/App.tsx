@@ -21,7 +21,7 @@ const App: React.FC = () => {
           <Route path="/home" element={<Home />} />
           <Route path="/events/:eventId" element={<EventDetails />} />
           <Route path="/organizer/:eventId" element={<OrganizerDashboard eventId="123" />} />
-          <Route path="/watch/:eventId" element={<LiveStream eventId={""} />} />
+          <Route path="/watch/:eventId" element={<LiveStream />} />
         </Routes>
       </UserContextProvider>
     </BrowserRouter>

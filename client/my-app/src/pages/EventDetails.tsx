@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 interface EventDetails {
   title: string;
   description: string;
-  date: string;
+  dateTime: string;
   venue: string;
   price: number;
   attendees: string[];
@@ -56,20 +56,18 @@ const EventDetails = () => {
     <div>
       <h1>{event.title}</h1>
       <p>{event.description}</p>
-      <p><strong>Date:</strong> {new Date(event.date).toLocaleString()}</p>
+      <p><strong>Date:</strong> {new Date(event.dateTime).toLocaleString()}</p>
       <p><strong>Venue:</strong> {event.venue}</p>
       <p><strong>Price:</strong> ${event.price || 'Free'}</p>
       <p><strong>Attendees:</strong> {event.attendees.length}</p>
 
-      {event.liveStreamUrl ? (
+      {event.liveStreamUrl && (
         <div>
           <h3>Live Streaming</h3>
           <a href={event.liveStreamUrl} target="_blank" rel="noopener noreferrer">
             Click here to watch the live stream
           </a>
         </div>
-      ) : (
-        <button onClick={startLivestream}>Start Live Stream</button>
       )}
     </div>
   );
