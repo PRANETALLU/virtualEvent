@@ -23,9 +23,10 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, organizer,
   const { userInfo } = useUser();
   
   const startLivestream = async () => {
+    const eventId = _id; 
     try {
-      await axios.post(`http://localhost:5000/events/${_id}/livestream/start`);
-      navigate(`/watch/${_id}`);
+      await axios.post(`http://localhost:5000/events/${eventId}/livestream/start`, {}, {withCredentials: true});
+      navigate(`/watch/${eventId}`);
     } catch (error) {
       console.error('Error starting livestream:', error);
     }
