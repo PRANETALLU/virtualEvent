@@ -78,7 +78,7 @@ const Home: React.FC = () => {
     <Box sx={{ pt: 8, pb: 4, px: 2, my: 4, display: "flex", flexDirection: "column", alignItems: "center"}}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%", maxWidth: "900px", mb: 3 }}>
         <Typography variant="h3" color="primary">
-          {userInfo ? `Welcome, ${userInfo.username}` : "Upcoming Events"}
+          Welcome {userInfo?.username}!
         </Typography>
         <Button variant="contained" color="primary" onClick={() => setOpen(true)} startIcon={<AddIcon />}>
           Create Event
