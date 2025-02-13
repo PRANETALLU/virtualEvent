@@ -48,6 +48,7 @@ const Login = () => {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
+        minWidth: "100%",
         backgroundColor: "black",
         color: "white",
         textAlign: "center",

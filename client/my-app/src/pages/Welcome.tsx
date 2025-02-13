@@ -6,7 +6,7 @@ const Welcome: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <Container sx={{ textAlign: "center", backgroundColor: "black", color: "white", minHeight: "100vh", width: "100vw", display: "flex", flexDirection: "column" }}>
+    <Container sx={{ textAlign: "center", backgroundColor: "black", color: "white", minHeight: "100vh", minWidth: "100%", display: "flex", flexDirection: "column" }}>
       <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexGrow: 1, width: "100%" }}>
         <Typography variant="h1" fontWeight="bold" mb={2}>
           LIVE. <span style={{ color: "#00cfff" }}>CREATE.</span> CONNECT

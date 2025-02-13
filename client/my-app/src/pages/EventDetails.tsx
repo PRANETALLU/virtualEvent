@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useParams } from "react-router-dom";
+import { Container, Typography, Paper, CircularProgress, Box, Button } from "@mui/material";
 
 interface EventDetails {
   title: string;
@@ -9,7 +10,7 @@ interface EventDetails {
   venue: string;
   price: number;
   attendees: string[];
-  liveStreamUrl: string;
+  liveStreamUrl?: string;
 }
 
 const EventDetails = () => {
@@ -22,42 +23,74 @@ const EventDetails = () => {
       try {
         const { data } = await axios.get(`http://localhost:5000/events/${eventId}`);
         setEvent(data);
-        setLoading(false);
       } catch (error) {
-        console.error('Error fetching event details:', error);
+        console.error("Error fetching event details:", error);
+      } finally {
         setLoading(false);
       }
     };
-
     fetchEventDetails();
   }, [eventId]);
 
   if (loading) {
-    return <div>Loading event details...</div>;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (!event) {
-    return <div>Event not found!</div>;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <Typography variant="h5" color="error">
+          Event not found!
+        </Typography>
+      </Box>
+    );
   }
 
   return (
-    <div>
-      <h1>{event.title}</h1>
-      <p>{event.description}</p>
-      <p><strong>Date:</strong> {new Date(event.dateTime).toLocaleString()}</p>
-      <p><strong>Venue:</strong> {event.venue}</p>
-      <p><strong>Price:</strong> ${event.price || 'Free'}</p>
-      <p><strong>Attendees:</strong> {event.attendees.length}</p>
+    <Container maxWidth="md" sx={{ mt: 18, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+        <Typography variant="h3" color="primary" gutterBottom>
+          {event.title}
+        </Typography>
+        <Typography variant="body1" paragraph>
+          {event.description}
+        </Typography>
+        <Typography variant="h6">
+          <strong>Date:</strong> {new Date(event.dateTime).toLocaleString()}
+        </Typography>
+        <Typography variant="h6">
+          <strong>Venue:</strong> {event.venue}
+        </Typography>
+        <Typography variant="h6">
+          <strong>Price:</strong> {event.price ? `$${event.price}` : "Free"}
+        </Typography>
+        <Typography variant="h6">
+          <strong>Attendees:</strong> {event.attendees.length}
+        </Typography>
 
-      {event.liveStreamUrl && (
-        <div>
-          <h3>Live Streaming</h3>
-          <a href={event.liveStreamUrl} target="_blank" rel="noopener noreferrer">
-            Click here to watch the live stream
-          </a>
-        </div>
-      )}
-    </div>
+        {event.liveStreamUrl && (
+          <Box mt={3} textAlign="center">
+            <Typography variant="h5" color="secondary">
+              Live Streaming
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              href={event.liveStreamUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ mt: 1 }}
+            >
+              Watch Live Stream
+            </Button>
+          </Box>
+        )}
+      </Paper>
+    </Container>
   );
 };
 
