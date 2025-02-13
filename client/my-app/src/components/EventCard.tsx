@@ -18,9 +18,10 @@ interface EventProps {
     email: string;
   };
   liveStreamUrl?: string;
+  ended: boolean
 }
 
-const EventCard = ({ _id, title, description, dateTime, venue, price, organizer, liveStreamUrl }: EventProps) => {
+const EventCard = ({ _id, title, description, dateTime, venue, price, organizer, liveStreamUrl, ended }: EventProps) => {
   const navigate = useNavigate();
   const { userInfo } = useUser();
 
@@ -90,7 +91,7 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, organizer,
               </Button>
             </a>
           ) : (
-            userInfo?.id === organizer._id && (
+            userInfo?.id === organizer._id && !ended && (
               <Button variant="contained" color="secondary" onClick={startLivestream}>
                 Start Stream
               </Button>

@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import UserContextProvider from './context/UserContext';
-import OrganizerDashboard from "./components/OrganizerDashboard";
 import LiveStream from "./pages/LiveStream";
 import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
@@ -20,7 +19,6 @@ const App: React.FC = () => {
           <Route path="/login" element={<Login />} />\
           <Route path="/home" element={<Home />} />
           <Route path="/events/:eventId" element={<EventDetails />} />
-          <Route path="/organizer/:eventId" element={<OrganizerDashboard eventId="123" />} />
           <Route path="/watch/:eventId" element={<LiveStream />} />
         </Routes>
       </UserContextProvider>

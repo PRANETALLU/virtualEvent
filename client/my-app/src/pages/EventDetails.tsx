@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 interface EventDetails {
   title: string;
@@ -14,7 +14,6 @@ interface EventDetails {
 
 const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
-  const navigate = useNavigate();
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -32,17 +31,6 @@ const EventDetails = () => {
 
     fetchEventDetails();
   }, [eventId]);
-
-  const startLivestream = async () => {
-    try {
-      const { data } = await axios.post(`http://localhost:5000/events/${eventId}/livestream/start`);
-      setEvent(data.event); // Update the event details with the stream URL
-      // Redirect to the livestream page
-      navigate(`/watch/${eventId}`);
-    } catch (error) {
-      console.error('Error starting livestream:', error);
-    }
-  };
 
   if (loading) {
     return <div>Loading event details...</div>;
