@@ -43,36 +43,53 @@ db.once('open', () => {
 app.use('/user', userRoutes);
 app.use('/events', eventRoutes);
 
-// Socket.IO events
+// Store active streams by event ID
+let activeStreams = {};
+
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  // Join a specific event room (for event-specific chat)
-  socket.on('join_event', (eventId) => {
-    socket.join(eventId);
-    console.log(`User joined event room: ${eventId}`);
+  // Handle joining a room (event)
+  socket.on('join-room', (eventId) => {
+    console.log(`User joined room: ${eventId}`);
+    socket.join(eventId); // Join the room
   });
 
-  // Send a message to the event room
-  socket.on('send_message', (data) => {
-    const { eventId, message, username } = data;
-    io.to(eventId).emit('receive_message', { username, message });
+  // Handle receiving a stream from the organizer
+  socket.on('start-stream', ({ eventId, streamData }) => {
+    console.log(`Stream started for event: ${eventId}`);
+    
+    // Store stream data along with some metadata like organizer ID
+    activeStreams[eventId] = {
+      streamData: streamData,
+      organizerId: socket.id,  // Store the socket ID of the organizer
+      status: 'active'  // Can be 'active', 'inactive', etc.
+    };
+    
+    // Broadcast the stream to all users in the room (attendees)
+    io.to(eventId).emit('receive-stream', streamData);
   });
 
-  // When a user disconnects
+  // Handle disconnect
   socket.on('disconnect', () => {
     console.log('User disconnected');
+    
+    // Check if the disconnected user was an organizer and handle stream cleanup
+    for (const [eventId, stream] of Object.entries(activeStreams)) {
+      if (stream.organizerId === socket.id) {
+        // Cleanup the stream for this event
+        delete activeStreams[eventId];
+        console.log(`Stream for event ${eventId} stopped due to organizer disconnect`);
+        
+        // Notify attendees to stop the stream
+        io.to(eventId).emit('stop-stream');
+      }
+    }
   });
-});
 
-
-io.on("connection", (socket) => {
-  socket.on("stream", (track, eventId) => {
-    socket.broadcast.emit("stream", { track, eventId });
-  });
-
-  socket.on("stop-stream", () => {
-    socket.broadcast.emit("stream-stopped");
+  // Optional: Handle any errors or other socket events
+  socket.on('error', (err) => {
+    console.error('Socket error:', err);
   });
 });
 

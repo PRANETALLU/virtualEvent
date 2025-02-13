@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const socket = io("http://localhost:5000"); // Adjust the URL accordingly
+const socket = io("http://localhost:5000", { withCredentials: true }); // Adjust the URL accordingly
 
 const LiveStream = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -17,7 +17,7 @@ const LiveStream = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
 
-  // This effect fetches event information on component mount
+  // Fetch event data when the component mounts
   useEffect(() => {
     const fetchEventData = async () => {
       try {
@@ -35,21 +35,22 @@ const LiveStream = () => {
     fetchEventData();
   }, [eventId]);
 
-  // Determine if the current user is the organizer based on event data
+  // Determine if the current user is the organizer
   const isOrganizer = event?.organizer?._id === userInfo?.id;
 
-  // This effect handles the video stream for viewers
+  // Handle the video stream for viewers
   useEffect(() => {
     if (isOrganizer || !event) return;
 
+    // Attendees join the room and listen for the stream
     socket.emit("join-room", eventId);
 
+    // Listen for the stream data from the organizer
     socket.on("receive-stream", (streamData: any) => {
-      if (videoRef.current) {
-        // Assuming streamData is already a MediaStream
+      if (videoRef.current && streamData) {
         const mediaStream = new MediaStream();
         const videoTrack = streamData.getTracks()[0]; // Access the track from the MediaStream
-    
+
         if (videoTrack) {
           mediaStream.addTrack(videoTrack);
           videoRef.current.srcObject = mediaStream;
@@ -57,30 +58,32 @@ const LiveStream = () => {
       }
     });
 
+    // Cleanup the socket listener when the component unmounts or event changes
     return () => {
       socket.off("receive-stream");
     };
   }, [eventId, event, isOrganizer]);
 
+  // Start streaming
   const startStreaming = async () => {
     try {
-      // The organizer will share their webcam instead of screen
+      // The organizer will share their webcam (audio/video)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
-  
+
       streamRef.current = stream;
-  
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-  
+
       setIsStreaming(true);
-  
-      // Emit the stream to the server
+
+      // Emit the stream data to the server
       socket.emit("start-stream", { eventId, streamData: stream });
-  
+
       // Handle stream ending via browser controls
       stream.getTracks().forEach((track) => {
         track.onended = () => {
@@ -88,7 +91,7 @@ const LiveStream = () => {
         };
       });
 
-      // Notify the server to start the stream
+      // Notify the server that the stream has started
       await axios.post(`http://localhost:5000/events/${eventId}/livestream/start`, {}, { withCredentials: true });
 
     } catch (error) {
@@ -96,6 +99,7 @@ const LiveStream = () => {
     }
   };
 
+  // Stop streaming
   const stopStreaming = async () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -111,12 +115,13 @@ const LiveStream = () => {
     try {
       // Notify the server to stop the stream
       await axios.post(`http://localhost:5000/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
-      navigate("/home");
+      navigate("/home"); // Navigate away after stopping the stream
     } catch (error) {
       console.error('Error stopping the stream:', error);
     }
   };
 
+  // Show loading indicator if event is not yet fetched
   if (!event) {
     return <div>Loading event...</div>;
   }
