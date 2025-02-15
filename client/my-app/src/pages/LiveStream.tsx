@@ -1,160 +1,162 @@
-import { useRef, useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, Typography } from '@mui/material';
-import { Button } from '@mui/material';
-import { useUser } from '../context/UserContext';
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
-import { io } from 'socket.io-client';
+import { useEffect, useRef, useState } from "react";
+import Peer from "peerjs";
+import { io, Socket } from "socket.io-client";
+import { useNavigate, useParams } from "react-router-dom";
+import { useUser } from "../context/UserContext";
+import axios from "axios";
+import { Box, Button, Typography, Paper } from "@mui/material";
 
-const socket = io("http://localhost:5000", { withCredentials: true }); // Adjust the URL accordingly
+const SOCKET_URL = "http://localhost:5000"; // Update for deployment
 
 const LiveStream = () => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [event, setEvent] = useState<any>(null); // Store event data
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const peerRef = useRef<Peer | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const { userInfo } = useUser();
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [peerId, setPeerId] = useState<string | null>(null);
+  const [isStreamActive, setIsStreamActive] = useState(false);
   const { eventId } = useParams<{ eventId: string }>();
+  const { userInfo } = useUser();
+  const [event, setEvent] = useState<any>(null);
   const navigate = useNavigate();
 
-  // Fetch event data when the component mounts
+  // Fetch event details
   useEffect(() => {
-    const fetchEventData = async () => {
-      try {
-        const response = await fetch(`http://localhost:5000/events/${eventId}`);
-        if (!response.ok) {
-          throw new Error('Event not found');
-        }
-        const eventData = await response.json();
-        setEvent(eventData);
-      } catch (error) {
-        console.error('Error fetching event:', error);
-      }
-    };
-
-    fetchEventData();
+    axios.get(`http://localhost:5000/events/${eventId}`)
+      .then((response) => setEvent(response.data))
+      .catch((error) => console.error("Failed to fetch event:", error));
   }, [eventId]);
 
-  // Determine if the current user is the organizer
   const isOrganizer = event?.organizer?._id === userInfo?.id;
 
-  // Handle the video stream for viewers
   useEffect(() => {
-    if (isOrganizer || !event) return;
+    const socketInstance = io(SOCKET_URL, { transports: ["websocket"] });
+    setSocket(socketInstance);
 
-    // Attendees join the room and listen for the stream
-    socket.emit("join-room", eventId);
+    socketInstance.on("stream-started", () => setIsStreamActive(true));
+    socketInstance.on("stream-stopped", () => setIsStreamActive(false));
 
-    // Listen for the stream data from the organizer
-    socket.on("receive-stream", (streamData: any) => {
-      if (videoRef.current && streamData) {
-        const mediaStream = new MediaStream();
-        const videoTrack = streamData.getTracks()[0]; // Access the track from the MediaStream
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
 
-        if (videoTrack) {
-          mediaStream.addTrack(videoTrack);
-          videoRef.current.srcObject = mediaStream;
-        }
-      }
+  useEffect(() => {
+    if (!socket) return;
+
+    const peer = new Peer();
+    peerRef.current = peer;
+
+    peer.on("open", (id) => {
+      setPeerId(id);
+      socket.emit(isOrganizer ? "organizer-joined" : "viewer-joined", id);
     });
 
-    // Cleanup the socket listener when the component unmounts or event changes
+    if (isOrganizer) {
+      navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .then((stream) => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+          socket.emit("start-stream");
+
+          socket.on("viewer-joined", (viewerPeerId) => {
+            console.log("New viewer:", viewerPeerId);
+            const call = peer.call(viewerPeerId, stream);
+            call.on("error", (err) => console.error("Call error:", err));
+          });
+        })
+        .catch((err) => console.error("Media access error:", err));
+    } else {
+      peer.on("call", (call) => {
+        navigator.mediaDevices
+          .getUserMedia({ video: false, audio: true }) // Dummy stream for handshake
+          .then((dummyStream) => {
+            call.answer(dummyStream);
+            call.on("stream", (remoteStream) => {
+              console.log("Receiving stream...");
+              if (videoRef.current) videoRef.current.srcObject = remoteStream;
+            });
+          })
+          .catch((err) => console.error("Failed to answer call:", err));
+      });
+    }
+
     return () => {
-      socket.off("receive-stream");
+      peer.destroy();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, [eventId, event, isOrganizer]);
+  }, [socket, isOrganizer]);
 
-  // Start streaming
-  const startStreaming = async () => {
-    try {
-      // The organizer will share their webcam (audio/video)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
-      setIsStreaming(true);
-
-      // Emit the stream data to the server
-      socket.emit("start-stream", { eventId, streamData: stream });
-
-      // Handle stream ending via browser controls
-      stream.getTracks().forEach((track) => {
-        track.onended = () => {
-          stopStreaming();
-        };
-      });
-
-      // Notify the server that the stream has started
-      await axios.post(`http://localhost:5000/events/${eventId}/livestream/start`, {}, { withCredentials: true });
-
-    } catch (error) {
-      console.error('Error starting stream:', error);
-    }
-  };
-
-  // Stop streaming
-  const stopStreaming = async () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setIsStreaming(false);
+  const handleStopStream = async () => {
+    if (socket) socket.emit("stop-stream");
 
     try {
-      // Notify the server to stop the stream
       await axios.post(`http://localhost:5000/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
-      navigate("/home"); // Navigate away after stopping the stream
+      navigate("/home");
     } catch (error) {
-      console.error('Error stopping the stream:', error);
+      console.error("Error stopping stream:", error);
     }
   };
-
-  // Show loading indicator if event is not yet fetched
-  if (!event) {
-    return <div>Loading event...</div>;
-  }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <Typography variant="h6">
-          {isOrganizer ? 'Share Your Screen' : 'Live Stream View'}
-        </Typography>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full bg-slate-900 rounded-lg aspect-video"
+    <Box 
+      sx={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
+        justifyContent: "center",
+        height: "100vh",
+        padding: 3,
+        gap: 2 
+      }}
+    >
+      <Typography variant="h4" fontWeight="bold">
+        {isOrganizer ? "Organizer Live Stream" : "Attendee View"}
+      </Typography>
+
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          width: "80%", 
+          maxWidth: 800, 
+          padding: 2, 
+          textAlign: "center", 
+          borderRadius: 3,
+          backgroundColor: "#f9f9f9"
+        }}
+      >
+        {isStreamActive ? (
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            style={{ width: "100%", maxHeight: "60vh", borderRadius: 10, objectFit: "cover" }} 
           />
-          {isOrganizer && (
-            <div className="flex justify-center">
-              {!isStreaming ? (
-                <Button onClick={startStreaming}>Start Streaming</Button>
-              ) : (
-                <Button onClick={stopStreaming}>
-                  Stop Streaming
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        ) : (
+          <Typography variant="h6" color="textSecondary">
+            Stream has been stopped
+          </Typography>
+        )}
+        
+        <Typography variant="body2" sx={{ mt: 1, fontStyle: "italic" }}>
+          Peer ID: {peerId}
+        </Typography>
+        
+        {isOrganizer && (
+          <Button 
+            variant="contained" 
+            color="error" 
+            sx={{ mt: 2, px: 3, py: 1 }} 
+            onClick={handleStopStream}
+          >
+            Stop Stream
+          </Button>
+        )}
+      </Paper>
+    </Box>
   );
 };
 
