@@ -40,7 +40,7 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, organizer,
   const handleDelete = async () => {
     try {
       await axios.delete(`http://localhost:5000/events/${_id}`, { withCredentials: true });
-      handleDialogClose(); // Close dialog after deletion
+      handleDialogClose(); 
     } catch (error) {
       console.error("Error deleting event:", error);
     }
