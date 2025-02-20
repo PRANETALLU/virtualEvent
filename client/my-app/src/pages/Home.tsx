@@ -76,6 +76,7 @@ const Home: React.FC = () => {
       const { data } = await axios.post("http://localhost:5000/events/create", newEvent, { withCredentials: true });
       setEvents([...events, data.event]);
       setOpen(false);
+      window.location.reload(); 
     } catch (error) {
       console.error("Error creating event:", error);
     }

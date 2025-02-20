@@ -169,7 +169,10 @@ const Search = () => {
     let results = [...events];
 
     if (selectedTab !== 0) {
-      results = results.filter(event => event.category === categories[selectedTab].id);
+      results = results.filter(event => {
+        console.log('Test', event?.category, categories[selectedTab].id); // This will print the category of each event
+        return event.category.toLowerCase() === categories[selectedTab].id;
+      });
     }
 
     if (searchQuery) {

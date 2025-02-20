@@ -12,6 +12,7 @@ interface EventProps {
   dateTime: string;
   venue: string;
   price: number;
+  category: string;
   organizer: {
     _id: string;
     username?: string;
@@ -22,7 +23,7 @@ interface EventProps {
   onDelete: (deletedEventId: string) => void;
 }
 
-const EventCard = ({ _id, title, description, dateTime, venue, price, organizer, liveStreamUrl, ended, onDelete }: EventProps) => {
+const EventCard = ({ _id, title, description, dateTime, venue, price, category, organizer, liveStreamUrl, ended, onDelete }: EventProps) => {
   const navigate = useNavigate();
   const { userInfo } = useUser();
 
@@ -76,6 +77,9 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, organizer,
         </Typography>
         <Typography variant="body2">
           <strong>Organizer:</strong> {organizer?.username}
+        </Typography>
+        <Typography variant="body2">
+          <strong>Category:</strong> {category}
         </Typography>
         <Typography variant="body2">
           <strong>Price:</strong> {price > 0 ? `$${price}` : "Free"}
