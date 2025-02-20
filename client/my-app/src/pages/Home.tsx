@@ -61,7 +61,9 @@ const Home: React.FC = () => {
   const handleCreateEvent = async () => {
     try {
       const { data } = await axios.post("http://localhost:5000/events/create", newEvent, { withCredentials: true });
-      setEvents([...events, data]);
+      console.log("Current Events", events)
+      console.log("Added Data", data)
+      setEvents([...events, data.event]);
       setOpen(false);
     } catch (error) {
       console.error("Error creating event:", error);
