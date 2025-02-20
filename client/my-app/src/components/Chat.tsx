@@ -10,7 +10,7 @@ interface ChatRoomProps {
   eventId: string;
 }
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ eventId }) => {
+const Chat: React.FC<ChatRoomProps> = ({ eventId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>("");
   const [username, setUsername] = useState<string>("User");
@@ -64,4 +64,4 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ eventId }) => {
   );
 };
 
-export default ChatRoom;
+export default Chat;

@@ -155,7 +155,7 @@ const Search = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [priceFilter, setPriceFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('upcoming');
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {

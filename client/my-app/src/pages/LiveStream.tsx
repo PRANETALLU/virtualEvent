@@ -4,7 +4,7 @@ import { io, Socket } from "socket.io-client";
 import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
-import { Box, Button, Typography, Paper } from "@mui/material";
+import { Box, Button, Typography, Paper, TextField, List, ListItem } from "@mui/material";
 
 const SOCKET_URL = "http://localhost:5000";
 
@@ -21,6 +21,8 @@ const LiveStream = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const { userInfo } = useUser();
   const [event, setEvent] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<string[]>([]);
+  const [newMessage, setNewMessage] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -79,6 +81,10 @@ const LiveStream = () => {
       console.log("Stream status updated:", status);
     });
 
+    socketInstance.on("new-message", (message: string) => {
+      setChatMessages((prevMessages) => [...prevMessages, message]);
+    });
+
     setSocket(socketInstance);
 
     return () => {
@@ -121,80 +127,7 @@ const LiveStream = () => {
       setError("Failed to establish peer connection");
     });
 
-    // Organizer: Handle new viewers joining
-    if (isOrganizer) {
-      socket.on("viewer-joined", ({ viewerPeerId }) => {
-        console.log("New viewer joined, attempting to call:", viewerPeerId);
-        if (streamRef.current && peerRef.current) {
-          console.log("Calling viewer with peer ID:", viewerPeerId);
-          console.log("Stream being sent:", streamRef.current);
-          const call = peerRef.current.call(viewerPeerId, streamRef.current);
-          call.on("error", (err) => {
-            console.error("Call to viewer failed:", err);
-            setError("Failed to connect to viewer");
-          });
-        } else {
-          console.log("No stream available yet for viewer:", viewerPeerId);
-        }
-      });
-    }
-
-    // Viewer: Handle incoming stream
-    if (!isOrganizer) {
-      peer.on("call", async (call) => {
-        console.log("Received call from organizer");
-
-        if (streamRef.current) { // Check if streamRef is not null
-          call.answer(streamRef.current);  // Answer with the local stream
-        } else {
-          console.error("Stream is not available");
-          // Handle the case where streamRef is null
-        }
-
-        call.on("stream", (remoteStream) => {
-          console.log("Received remote stream:", remoteStream.id);
-          if (videoRef.current && remoteStream.getVideoTracks().length > 0) {
-            videoRef.current.srcObject = remoteStream;
-            const playVideo = async () => {
-              try {
-                await videoRef.current?.play();
-                console.log("Video playback started successfully");
-              } catch (err) {
-                console.error("Video playback failed:", err);
-                setError("Failed to play video - please click to play");
-                if (videoRef.current) {
-                  videoRef.current.controls = true; // Enable controls for manual play
-                }
-              }
-            };
-
-            videoRef.current.onloadedmetadata = () => {
-              console.log("Video metadata loaded, attempting playback");
-              playVideo();
-            };
-          } else {
-            console.error("Invalid video element or no video tracks in stream");
-          }
-        });
-
-        call.on("error", (error) => {
-          console.error("Call error:", error);
-          setError("Stream connection error");
-        });
-
-        call.on("close", () => {
-          console.log("Call closed");
-          if (videoRef.current) {
-            videoRef.current.srcObject = null;
-          }
-        });
-      });
-    }
-
     return () => {
-      if (socket) {
-        socket.off("viewer-joined");
-      }
       if (peerRef.current) {
         peerRef.current.destroy();
       }
@@ -220,9 +153,7 @@ const LiveStream = () => {
       console.log("Media stream acquired:", stream.id);
       streamRef.current = stream;
 
-      // Set up local preview
       if (videoRef.current) {
-        console.log("Within videoRef current")
         videoRef.current.srcObject = stream;
         try {
           await videoRef.current.play();
@@ -233,7 +164,6 @@ const LiveStream = () => {
         }
       }
 
-      // Notify server that stream is starting
       socket.emit("start-stream", { peerId, eventId });
       setIsStreamActive(true);
 
@@ -293,103 +223,162 @@ const LiveStream = () => {
     }
   };
 
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      socket?.emit("send-message", {
+        eventId,
+        message: newMessage,
+        sender: userInfo?.username,
+      });
+      setNewMessage("");
+    }
+  };
+
   return (
     <Box
       sx={{
         display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        flexDirection: "row",
         height: "100vh",
         padding: 3,
-        gap: 2,
       }}
     >
-      <Typography variant="h4" fontWeight="bold">
-        {isOrganizer ? "Organizer Live Stream" : "Attendee View"}
-      </Typography>
-
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-
-      <Paper
-        elevation={3}
+      <Box
         sx={{
-          width: "80%",
-          maxWidth: 800,
-          padding: 2,
-          textAlign: "center",
-          borderRadius: 3,
-          backgroundColor: "#f9f9f9",
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          style={{
-            width: "100%",
-            maxHeight: "60vh",
-            borderRadius: 10,
-            objectFit: "cover",
-            backgroundColor: "black",
-            display: isStreamActive ? "block" : "none",
-          }}
-        />
+        <Typography variant="h4" fontWeight="bold">
+          {isOrganizer ? "Organizer Live Stream" : "Attendee View"}
+        </Typography>
 
-        {!isStreamActive && (
-          <Typography variant="h6" color="textSecondary">
-            Stream is not active
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
           </Typography>
         )}
 
-        {isOrganizer && !isStreamActive && (
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{ mt: 2, px: 3, py: 1 }}
-            onClick={handleStartStream}
-          >
-            Start Stream
-          </Button>
-        )}
+        <Paper
+          elevation={3}
+          sx={{
+            width: "80%",
+            maxWidth: 800,
+            padding: 2,
+            textAlign: "center",
+            borderRadius: 3,
+            backgroundColor: "#f9f9f9",
+          }}
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            style={{
+              width: "100%",
+              maxHeight: "60vh",
+              borderRadius: 10,
+              objectFit: "cover",
+              backgroundColor: "black",
+              display: isStreamActive ? "block" : "none",
+            }}
+          />
 
-        {isOrganizer && isStreamActive && (
-          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+          {!isStreamActive && (
+            <Typography variant="h6" color="textSecondary">
+              Stream is not active
+            </Typography>
+          )}
+
+          {isOrganizer && !isStreamActive && (
             <Button
               variant="contained"
-              color={isMicMuted ? "secondary" : "primary"}
-              onClick={handleMuteUnmute}
+              color="primary"
+              sx={{ mt: 2, px: 3, py: 1 }}
+              onClick={handleStartStream}
             >
-              {isMicMuted ? "Unmute Mic" : "Mute Mic"}
+              Start Stream
             </Button>
+          )}
+
+          {isOrganizer && isStreamActive && (
+            <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+              <Button
+                variant="contained"
+                color={isMicMuted ? "secondary" : "primary"}
+                onClick={handleMuteUnmute}
+              >
+                {isMicMuted ? "Unmute Mic" : "Mute Mic"}
+              </Button>
+              <Button
+                variant="contained"
+                color={isCameraDisabled ? "secondary" : "primary"}
+                onClick={handleDisableEnableCamera}
+              >
+                {isCameraDisabled ? "Enable Camera" : "Disable Camera"}
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                sx={{ ml: 2 }}
+                onClick={handleStopStream}
+              >
+                Stop Stream
+              </Button>
+            </Box>
+          )}
+
+          {!isOrganizer && isStreamActive && (
             <Button
               variant="contained"
-              color={isCameraDisabled ? "secondary" : "primary"}
-              onClick={handleDisableEnableCamera}
-            >
-              {isCameraDisabled ? "Enable Camera" : "Disable Camera"}
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              sx={{ ml: 2 }}
+              color="secondary"
+              sx={{ mt: 2 }}
               onClick={handleStopStream}
             >
-              Stop Stream
+              Stop Watching
             </Button>
-          </Box>
-        )}
+          )}
+        </Paper>
+      </Box>
 
-        {!isOrganizer && isStreamActive && (
-          <Typography variant="h6" color="textSecondary">
-            You are viewing the stream
-          </Typography>
-        )}
-      </Paper>
+      <Box
+        sx={{
+          width: 350,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          padding: 2,
+          borderLeft: "1px solid #ccc",
+          backgroundColor: "#fff",
+        }}
+      >
+        <Typography variant="h6" fontWeight="bold">
+          Live Chat
+        </Typography>
+
+        <List sx={{ overflowY: "auto", flex: 1, marginBottom: 2 }}>
+          {chatMessages.map((msg, index) => (
+            <ListItem key={index}>{msg}</ListItem>
+          ))}
+        </List>
+
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <TextField
+            variant="outlined"
+            fullWidth
+            label="Type a message"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+          />
+          <Button variant="contained" color="primary" onClick={handleSendMessage}>
+            Send
+          </Button>
+        </Box>
+      </Box>
     </Box>
   );
 };
