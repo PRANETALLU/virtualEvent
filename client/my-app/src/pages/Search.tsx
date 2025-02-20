@@ -55,6 +55,7 @@ interface Category {
 }
 
 const eventCategories = [
+  "All", 
   "Music",
   "Arts",
   "Sports",
@@ -74,6 +75,10 @@ const categories: Category[] = eventCategories.map((category) => {
   let color;
 
   switch (category.toLowerCase()) {
+    case "all":
+      Icon = AllInclusiveIcon; 
+      color = "#757575";
+      break; 
     case "music":
       Icon = MusicNoteIcon;
       color = "#2196F3";
