@@ -25,6 +25,10 @@ import SchoolIcon from '@mui/icons-material/School';
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive';
 import EventCard from '../components/EventCard';
 import axios from 'axios';
+import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
+import GroupIcon from "@mui/icons-material/Group";
+import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
+import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 
 interface Event {
   _id: string;
@@ -50,16 +54,87 @@ interface Category {
   color: string;
 }
 
-const categories: Category[] = [
-  { id: 'all', name: 'All Events', Icon: AllInclusiveIcon, color: '#757575' },
-  { id: 'music', name: 'Music', Icon: MusicNoteIcon, color: '#2196F3' },
-  { id: 'sports', name: 'Sports', Icon: SportsSoccerIcon, color: '#4CAF50' },
-  { id: 'tech', name: 'Technology', Icon: ComputerIcon, color: '#9C27B0' },
-  { id: 'business', name: 'Business', Icon: BusinessIcon, color: '#FF9800' },
-  { id: 'arts', name: 'Arts & Theatre', Icon: TheaterComedyIcon, color: '#E91E63' },
-  { id: 'food', name: 'Food & Drink', Icon: RestaurantIcon, color: '#FFC107' },
-  { id: 'education', name: 'Education', Icon: SchoolIcon, color: '#F44336' },
+const eventCategories = [
+  "Music",
+  "Arts",
+  "Sports",
+  "Tech",
+  "Business",
+  "Education",
+  "Food",
+  "Health",
+  "Community",
+  "Travel",
+  "Gaming",
+  "Other",
 ];
+
+const categories: Category[] = eventCategories.map((category) => {
+  let Icon;
+  let color;
+
+  switch (category.toLowerCase()) {
+    case "music":
+      Icon = MusicNoteIcon;
+      color = "#2196F3";
+      break;
+    case "sports":
+      Icon = SportsSoccerIcon;
+      color = "#4CAF50";
+      break;
+    case "tech":
+      Icon = ComputerIcon;
+      color = "#9C27B0";
+      break;
+    case "business":
+      Icon = BusinessIcon;
+      color = "#FF9800";
+      break;
+    case "arts":
+      Icon = TheaterComedyIcon;
+      color = "#E91E63";
+      break;
+    case "food":
+      Icon = RestaurantIcon;
+      color = "#FFC107";
+      break;
+    case "education":
+      Icon = SchoolIcon;
+      color = "#F44336";
+      break;
+    case "health":
+      Icon = HealthAndSafetyIcon;
+      color = "#4CAF50";
+      break;
+    case "community":
+      Icon = GroupIcon;
+      color = "#00BCD4";
+      break;
+    case "travel":
+      Icon = FlightTakeoffIcon;
+      color = "#FF5722";
+      break;
+    case "gaming":
+      Icon = SportsEsportsIcon;
+      color = "#9E9E9E";
+      break;
+    case "other":
+      Icon = AllInclusiveIcon;
+      color = "#757575";
+      break;
+    default:
+      Icon = AllInclusiveIcon;
+      color = "#757575";
+      break;
+  }
+
+  return {
+    id: category.toLowerCase(),
+    name: category,
+    Icon,
+    color,
+  };
+});
 
 const Search = () => {
   const [events, setEvents] = useState<Event[]>([]);

@@ -10,7 +10,7 @@ const verifyToken = require('../middleware/authMiddleware');*/
 
 // Create Event
 exports.createEvent = async (req, res) => {
-  const { title, description, dateTime, venue, price } = req.body;
+  const { title, description, dateTime, venue, price, category } = req.body;
   console.log('Intro')
   try {
 
@@ -29,6 +29,7 @@ exports.createEvent = async (req, res) => {
       dateTime,
       venue,
       price,
+      category,
       organizer: req.user.id,  // Make sure this is getting set
       attendees: [req.user.id]
     });

@@ -12,9 +12,28 @@ import {
   Typography,
   Box,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
+
+const eventCategories = [
+  "Music",
+  "Arts",
+  "Sports",
+  "Tech",
+  "Business",
+  "Education",
+  "Food",
+  "Health",
+  "Community",
+  "Travel",
+  "Gaming",
+  "Other"
+];
 
 interface Event {
   _id: string;
@@ -23,6 +42,7 @@ interface Event {
   dateTime: string;
   venue: string;
   price: number;
+  category: string;
   organizer: {
     _id: string;
     username: string;
@@ -36,15 +56,16 @@ const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [open, setOpen] = useState<boolean>(false);
-  const [newEvent, setNewEvent] = useState<{ title: string; description: string; dateTime: string; price: string; venue: string }>({
+  const [newEvent, setNewEvent] = useState<{ title: string; description: string; dateTime: string; price: string; venue: string; category: string }>({
     title: "",
     description: "",
     dateTime: "",
     price: "",
     venue: "",
+    category: "",
   });
   const { userInfo } = useUser();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -88,7 +109,7 @@ const Home: React.FC = () => {
   const completedEvents = events.filter((event) => event.ended);
 
   return (
-    <Box sx={{ pt: 8, pb: 4, px: 2, my: 4, display: "flex", flexDirection: "column", alignItems: "center"}}>
+    <Box sx={{ pt: 8, pb: 4, px: 2, my: 4, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%", maxWidth: "900px", mb: 3 }}>
         <Typography variant="h3" color="primary">
           Welcome {userInfo?.username}!
@@ -97,8 +118,8 @@ const Home: React.FC = () => {
           Create Event
         </Button>
         <Button variant="outlined" onClick={() => navigate("/search")}> {/* Add the button to navigate to Search */}
-            Search Events
-          </Button>
+          Search Events
+        </Button>
       </Stack>
 
       {/* Event Creation Dialog */}
@@ -110,6 +131,21 @@ const Home: React.FC = () => {
           <TextField type="datetime-local" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, dateTime: e.target.value }))} />
           <TextField label="Venue" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, venue: e.target.value }))} />
           <TextField label="Price" type="number" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, price: e.target.value }))} />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={newEvent.category}
+              onChange={(e) =>
+                setNewEvent((prev) => ({ ...prev, category: e.target.value }))
+              }
+            >
+              {eventCategories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)} color="secondary">
