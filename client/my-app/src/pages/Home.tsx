@@ -256,7 +256,8 @@ const Home: React.FC = () => {
         ) : (
           <Stack spacing={8}>
             {[
-              { title: "Upcoming Events", events: upcomingEvents, color: "primary" },
+              {title: "Your Events", events: yourEvents, color: "primary"}, 
+              { title: "Upcoming Events", events: upcomingEvents, color: "success" },
               { title: "In Progress Events", events: inProgressEvents, color: "secondary" },
               { title: "Completed Events", events: completedEvents, color: "text.secondary" }
             ].map(({ title, events, color }) => (
