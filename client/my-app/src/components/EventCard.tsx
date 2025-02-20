@@ -127,14 +127,14 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
             )
           )}
         </div>
-        
-        {!isAttending && !isOrganizer && (
+
+        {!isAttending && !isOrganizer && !ended && (
           <Button variant="contained" color="success" onClick={handleJoinEvent}>
             Join Event
           </Button>
         )}
 
-        {isAttending && !isOrganizer && (
+        {isAttending && !isOrganizer && !ended && (
           <Button variant="contained" disabled>
             Already Joined
           </Button>

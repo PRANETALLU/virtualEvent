@@ -83,7 +83,7 @@ const Home: React.FC = () => {
       const { data } = await axios.post("http://localhost:5000/events/create", newEvent, { withCredentials: true });
       setEvents([...events, data.event]);
       setOpen(false);
-      window.location.reload(); 
+      window.location.reload();
     } catch (error) {
       console.error("Error creating event:", error);
     }
@@ -100,19 +100,19 @@ const Home: React.FC = () => {
 
   const now = new Date();
   const yourEvents = events.filter((event) => event.organizer._id == userInfo?.id && !event.ended);
-  const upcomingEvents = events.filter((event) => new Date(event.dateTime) > now && !event.ended);   // Upcoming events to attend
-  const inProgressEvents = events.filter((event) => new Date(event.dateTime) <= now && !event.ended); // Events to attend on time
+  const upcomingEvents = events.filter((event) => new Date(event.dateTime) > now && event.attendees.some(attendee => attendee._id === userInfo?.id) && !event.ended);   // Upcoming events to attend
+  const inProgressEvents = events.filter((event) => new Date(event.dateTime) <= now && event.attendees.some(attendee => attendee._id === userInfo?.id) && !event.ended); // Events to attend on time
   const completedEvents = events.filter((event) => (event.organizer._id === userInfo?.id || event.attendees.some(attendee => attendee._id === userInfo?.id)) && event.ended); // Attended events that are completed and also events that are created
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       backgroundColor: '#f5f5f5',
       pt: { xs: 4, md: 6 },
       pb: 8,
       marginTop: 10
     }}>
-      <Box sx={{ 
+      <Box sx={{
         maxWidth: '1200px',
         mx: 'auto',
         px: { xs: 2, sm: 4 }
@@ -126,8 +126,8 @@ const Home: React.FC = () => {
           mb: 6,
           gap: 2
         }}>
-          <Typography 
-            variant="h3" 
+          <Typography
+            variant="h3"
             color="primary"
             sx={{
               fontWeight: 'bold',
@@ -136,7 +136,7 @@ const Home: React.FC = () => {
           >
             Welcome {userInfo?.username}!
           </Typography>
-          <Stack 
+          <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
           >
@@ -145,7 +145,7 @@ const Home: React.FC = () => {
               color="primary"
               onClick={() => setOpen(true)}
               startIcon={<AddIcon />}
-              sx={{ 
+              sx={{
                 minWidth: '160px',
                 height: '48px'
               }}
@@ -155,7 +155,7 @@ const Home: React.FC = () => {
             <Button
               variant="outlined"
               onClick={() => navigate("/search")}
-              sx={{ 
+              sx={{
                 minWidth: '160px',
                 height: '48px'
               }}
@@ -166,8 +166,8 @@ const Home: React.FC = () => {
         </Box>
 
         {/* Event Creation Dialog */}
-        <Dialog 
-          open={open} 
+        <Dialog
+          open={open}
           onClose={() => setOpen(false)}
           maxWidth="sm"
           fullWidth
@@ -229,16 +229,16 @@ const Home: React.FC = () => {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button 
-              onClick={() => setOpen(false)} 
+            <Button
+              onClick={() => setOpen(false)}
               color="inherit"
               variant="outlined"
               sx={{ minWidth: '100px' }}
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateEvent} 
+            <Button
+              onClick={handleCreateEvent}
               color="primary"
               variant="contained"
               sx={{ minWidth: '100px' }}
@@ -256,16 +256,16 @@ const Home: React.FC = () => {
         ) : (
           <Stack spacing={8}>
             {[
-              {title: "Your Events", events: yourEvents, color: "primary"}, 
+              { title: "Your Events", events: yourEvents, color: "primary" },
               { title: "Upcoming Events", events: upcomingEvents, color: "success" },
               { title: "In Progress Events", events: inProgressEvents, color: "secondary" },
               { title: "Completed Events", events: completedEvents, color: "text.secondary" }
             ].map(({ title, events, color }) => (
               <Box key={title}>
-                <Typography 
-                  variant="h4" 
+                <Typography
+                  variant="h4"
                   color={color}
-                  sx={{ 
+                  sx={{
                     mb: 4,
                     fontWeight: 'bold',
                     textAlign: { xs: 'left', sm: 'center' }
@@ -290,10 +290,10 @@ const Home: React.FC = () => {
                     ))}
                   </Box>
                 ) : (
-                  <Typography 
-                    variant="h6" 
+                  <Typography
+                    variant="h6"
                     color="text.secondary"
-                    sx={{ 
+                    sx={{
                       textAlign: 'center',
                       py: 4
                     }}

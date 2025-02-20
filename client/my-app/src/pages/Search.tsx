@@ -30,6 +30,12 @@ import GroupIcon from "@mui/icons-material/Group";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 
+interface Attendee {
+  _id: string;
+  username: string;
+  email: string;
+}
+
 interface Event {
   _id: string;
   title: string;
@@ -43,6 +49,7 @@ interface Event {
     username: string;
     email: string;
   };
+  attendees: Attendee[];
   liveStreamUrl?: string;
   ended: boolean;
 }
@@ -149,6 +156,7 @@ const Search = () => {
   const [loading, setLoading] = useState(true);
   const [priceFilter, setPriceFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('upcoming');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -198,6 +206,11 @@ const Search = () => {
       );
     }
 
+    if (statusFilter !== 'all') {
+      const status = statusFilter === 'true';
+      results = results.filter(event => event.ended === status);
+    }
+
     setFilteredEvents(results);
   }, [searchQuery, selectedTab, priceFilter, dateFilter, events]);
 
@@ -238,7 +251,7 @@ const Search = () => {
 
       <Box display="flex" gap={2} mb={3} justifyContent="center">
         <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Price</InputLabel>
+          <InputLabel sx={{ top: -8 }}>Price</InputLabel>
           <Select value={priceFilter} onChange={e => setPriceFilter(e.target.value)}>
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="free">Free</MenuItem>
@@ -247,11 +260,20 @@ const Search = () => {
         </FormControl>
 
         <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Date</InputLabel>
+          <InputLabel sx={{ top: -8 }}>Date</InputLabel>
           <Select value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="upcoming">Upcoming</MenuItem>
             <MenuItem value="past">Past</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel sx={{ top: -8 }}>Status</InputLabel>
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="true">Ended</MenuItem>
+            <MenuItem value="false">Upcoming</MenuItem>
           </Select>
         </FormControl>
       </Box>
