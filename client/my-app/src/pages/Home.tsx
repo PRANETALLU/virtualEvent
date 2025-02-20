@@ -14,6 +14,7 @@ import {
   Stack,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { useNavigate } from "react-router-dom";
 
 interface Event {
   _id: string;
@@ -43,6 +44,7 @@ const Home: React.FC = () => {
     venue: "",
   });
   const { userInfo } = useUser();
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -94,6 +96,9 @@ const Home: React.FC = () => {
         <Button variant="contained" color="primary" onClick={() => setOpen(true)} startIcon={<AddIcon />}>
           Create Event
         </Button>
+        <Button variant="outlined" onClick={() => navigate("/search")}> {/* Add the button to navigate to Search */}
+            Search Events
+          </Button>
       </Stack>
 
       {/* Event Creation Dialog */}

@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import EventDetails from "./pages/EventDetails";
 import { Header } from "./components/Header";
+import Search from "./pages/Search";
 
 const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ const App: React.FC = () => {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />\
           <Route path="/home" element={<Home />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/events/:eventId" element={<EventDetails />} />
           <Route path="/watch/:eventId" element={<LiveStream />} />
         </Routes>

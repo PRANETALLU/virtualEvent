@@ -108,7 +108,7 @@ const Search = () => {
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" style={{marginTop: 100}}>
       <Typography variant="h4" gutterBottom align="center">
         Discover Events
       </Typography>
