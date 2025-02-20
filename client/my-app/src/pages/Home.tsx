@@ -68,6 +68,15 @@ const Home: React.FC = () => {
     }
   };
 
+  const handleDeleteEvent = async (deletedEventId: string) => {
+    try {
+      await axios.delete(`http://localhost:5000/events/${deletedEventId}`, { withCredentials: true });
+      setEvents((prevEvents) => prevEvents.filter((event) => event._id !== deletedEventId));
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
+
   // Categorize events
   const now = new Date();
   const upcomingEvents = events.filter((event) => new Date(event.dateTime) > now && !event.ended);
@@ -124,7 +133,7 @@ const Home: React.FC = () => {
                   <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 4 }}>
                     {eventsInCategory.map((event) => (
                       <Box key={event._id} sx={{ width: "100%", maxWidth: "320px" }}>
-                        <EventCard {...event} />
+                        <EventCard {...event} onDelete={handleDeleteEvent} />
                       </Box>
                     ))}
                   </Box>

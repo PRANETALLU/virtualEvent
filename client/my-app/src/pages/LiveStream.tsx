@@ -26,12 +26,17 @@ const LiveStream = () => {
   useEffect(() => {
     if (!eventId) {
       setError("Event ID is required");
+      console.log("Event ID is missing");
       return;
     }
 
+    console.log(`Fetching event details for eventId: ${eventId}`);
     axios
       .get(`${SOCKET_URL}/events/${eventId}`)
-      .then((response) => setEvent(response.data))
+      .then((response) => {
+        setEvent(response.data);
+        console.log("Event details loaded:", response.data);
+      })
       .catch((error) => {
         console.error("Failed to fetch event:", error);
         setError("Failed to load event details");
@@ -52,19 +57,26 @@ const LiveStream = () => {
       setError("Failed to connect to server");
     });
 
-    socketInstance.on("stream-started", () => setIsStreamActive(true));
+    socketInstance.on("stream-started", () => {
+      setIsStreamActive(true);
+      console.log("Stream started");
+    });
+
     socketInstance.on("stream-stopped", () => {
       setIsStreamActive(false);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        console.log("Stream stopped and tracks closed");
       }
       if (videoRef.current) {
         videoRef.current.srcObject = null;
+        console.log("Video element cleared");
       }
     });
 
     socketInstance.on("stream-status", (status: boolean) => {
       setIsStreamActive(status);
+      console.log("Stream status updated:", status);
     });
 
     setSocket(socketInstance);
@@ -82,9 +94,14 @@ const LiveStream = () => {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:global.stun.twilio.com:3478" },
+          {
+            urls: "turn:numb.viagenie.ca",
+            username: "webrtc@live.com",
+            credential: "muazkh"
+          }
         ],
       },
-      debug: 3, // Enable detailed logging
+      debug: 3,
     });
 
     peerRef.current = peer;
@@ -109,6 +126,8 @@ const LiveStream = () => {
       socket.on("viewer-joined", ({ viewerPeerId }) => {
         console.log("New viewer joined, attempting to call:", viewerPeerId);
         if (streamRef.current && peerRef.current) {
+          console.log("Calling viewer with peer ID:", viewerPeerId);
+          console.log("Stream being sent:", streamRef.current);
           const call = peerRef.current.call(viewerPeerId, streamRef.current);
           call.on("error", (err) => {
             console.error("Call to viewer failed:", err);
@@ -124,14 +143,18 @@ const LiveStream = () => {
     if (!isOrganizer) {
       peer.on("call", async (call) => {
         console.log("Received call from organizer");
-        
-        call.answer(); // Answer without sending a stream back
-        
+
+        if (streamRef.current) { // Check if streamRef is not null
+          call.answer(streamRef.current);  // Answer with the local stream
+        } else {
+          console.error("Stream is not available");
+          // Handle the case where streamRef is null
+        }
+
         call.on("stream", (remoteStream) => {
           console.log("Received remote stream:", remoteStream.id);
           if (videoRef.current && remoteStream.getVideoTracks().length > 0) {
             videoRef.current.srcObject = remoteStream;
-            
             const playVideo = async () => {
               try {
                 await videoRef.current?.play();
@@ -199,6 +222,7 @@ const LiveStream = () => {
 
       // Set up local preview
       if (videoRef.current) {
+        console.log("Within videoRef current")
         videoRef.current.srcObject = stream;
         try {
           await videoRef.current.play();
@@ -221,6 +245,7 @@ const LiveStream = () => {
 
   const handleStopStream = async () => {
     try {
+      console.log("Stopping stream...");
       if (socket) {
         socket.emit("stop-stream", { eventId });
       }
@@ -241,7 +266,7 @@ const LiveStream = () => {
         { withCredentials: true }
       );
 
-      navigate("/home");
+      setTimeout(() => navigate("/home"), 500);
     } catch (error) {
       console.error("Error stopping stream:", error);
       setError("Failed to stop stream");
@@ -351,12 +376,18 @@ const LiveStream = () => {
             <Button
               variant="contained"
               color="error"
-              sx={{ ml: 2, px: 3, py: 1 }}
+              sx={{ ml: 2 }}
               onClick={handleStopStream}
             >
               Stop Stream
             </Button>
           </Box>
+        )}
+
+        {!isOrganizer && isStreamActive && (
+          <Typography variant="h6" color="textSecondary">
+            You are viewing the stream
+          </Typography>
         )}
       </Paper>
     </Box>

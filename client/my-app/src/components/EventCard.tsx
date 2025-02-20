@@ -18,10 +18,11 @@ interface EventProps {
     email: string;
   };
   liveStreamUrl?: string;
-  ended: boolean
+  ended: boolean;
+  onDelete: (deletedEventId: string) => void;
 }
 
-const EventCard = ({ _id, title, description, dateTime, venue, price, organizer, liveStreamUrl, ended }: EventProps) => {
+const EventCard = ({ _id, title, description, dateTime, venue, price, organizer, liveStreamUrl, ended, onDelete }: EventProps) => {
   const navigate = useNavigate();
   const { userInfo } = useUser();
 
@@ -38,17 +39,18 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, organizer,
   };
 
   const handleDelete = async () => {
-    try {
-      await axios.delete(`http://localhost:5000/events/${_id}`, { withCredentials: true });
-      handleDialogClose(); 
-    } catch (error) {
-      console.error("Error deleting event:", error);
+    if (_id) { 
+      try {
+        onDelete(_id);
+        setOpenDialog(false);
+      } catch (error) {
+        console.error("Error deleting event:", error);
+      }
     }
   };
 
   const handleDialogClose = () => {
     setOpenDialog(false);
-    window.location.reload(); 
   }
   const handleDialogOpen = () => setOpenDialog(true);
 
