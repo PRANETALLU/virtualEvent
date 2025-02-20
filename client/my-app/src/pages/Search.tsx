@@ -9,6 +9,10 @@ import {
   Card,
   InputAdornment,
   CircularProgress,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
@@ -63,6 +67,8 @@ const Search = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [priceFilter, setPriceFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('upcoming');
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -81,9 +87,11 @@ const Search = () => {
 
   useEffect(() => {
     let results = [...events];
+
     if (selectedTab !== 0) {
       results = results.filter(event => event.category === categories[selectedTab].id);
     }
+
     if (searchQuery) {
       results = results.filter(event =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -91,13 +99,29 @@ const Search = () => {
         event.venue.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+
+    if (priceFilter !== 'all') {
+      results = results.filter(event => 
+        priceFilter === 'free' ? event.price === 0 : event.price > 0
+      );
+    }
+
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      results = results.filter(event =>
+        dateFilter === 'upcoming'
+          ? new Date(event.dateTime) >= now
+          : new Date(event.dateTime) < now
+      );
+    }
+
     setFilteredEvents(results);
-  }, [searchQuery, selectedTab, events]);
+  }, [searchQuery, selectedTab, priceFilter, dateFilter, events]);
 
   const handleDeleteEvent = async (deletedEventId: string) => {
     try {
       await axios.delete(`http://localhost:5000/events/${deletedEventId}`, { withCredentials: true });
-      setEvents((prevEvents) => prevEvents.filter((event) => event._id !== deletedEventId));
+      setEvents(prevEvents => prevEvents.filter(event => event._id !== deletedEventId));
     } catch (error) {
       console.error("Error deleting event:", error);
     }
@@ -108,7 +132,7 @@ const Search = () => {
   };
 
   return (
-    <Container maxWidth="lg" style={{marginTop: 100}}>
+    <Container maxWidth="lg" style={{ marginTop: 100 }}>
       <Typography variant="h4" gutterBottom align="center">
         Discover Events
       </Typography>
@@ -128,6 +152,26 @@ const Search = () => {
           ),
         }}
       />
+
+      <Box display="flex" gap={2} mb={3} justifyContent="center">
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Price</InputLabel>
+          <Select value={priceFilter} onChange={e => setPriceFilter(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="free">Free</MenuItem>
+            <MenuItem value="paid">Paid</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Date</InputLabel>
+          <Select value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="upcoming">Upcoming</MenuItem>
+            <MenuItem value="past">Past</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
       <Tabs
         value={selectedTab}
