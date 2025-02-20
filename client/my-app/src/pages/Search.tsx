@@ -187,7 +187,9 @@ const Search = () => {
       results = results.filter(event =>
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.venue.toLowerCase().includes(searchQuery.toLowerCase())
+        event.venue.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.organizer.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
