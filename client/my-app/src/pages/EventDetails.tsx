@@ -1,16 +1,30 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import { Container, Typography, Paper, CircularProgress, Box, Button } from "@mui/material";
+import { Container, Typography, Paper, CircularProgress, Box, Button, List, ListItem, Divider } from "@mui/material";
+
+interface Attendee {
+  _id: string;
+  username: string;
+  email: string;
+}
 
 interface EventDetails {
+  _id: string;
   title: string;
   description: string;
   dateTime: string;
   venue: string;
   price: number;
-  attendees: string[];
+  category: string;
+  organizer: {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  attendees: Attendee[];
   liveStreamUrl?: string;
+  ended: boolean;
 }
 
 const EventDetails = () => {
@@ -56,25 +70,53 @@ const EventDetails = () => {
         <Typography variant="h3" color="primary" gutterBottom>
           {event.title}
         </Typography>
-        <Typography variant="body1" paragraph>
+
+        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', color: 'text.secondary' }}>
           {event.description}
         </Typography>
-        <Typography variant="h6">
-          <strong>Date:</strong> {new Date(event.dateTime).toLocaleString()}
+
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <strong>Date:</strong> {new Date(event.dateTime).toLocaleString()}
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <strong>Venue:</strong> {event.venue}
+          </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <strong>Price:</strong> {event.price ? `$${event.price}` : "Free"}
+          </Typography>
+        </Box>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <strong>Category:</strong> {event.category}
+          </Typography>
+        </Box>
+
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          <strong>Attendees:</strong>
         </Typography>
-        <Typography variant="h6">
-          <strong>Venue:</strong> {event.venue}
-        </Typography>
-        <Typography variant="h6">
-          <strong>Price:</strong> {event.price ? `$${event.price}` : "Free"}
-        </Typography>
-        <Typography variant="h6">
-          <strong>Attendees:</strong> {event.attendees.length}
-        </Typography>
+        <List sx={{ mb: 3 }}>
+          {event.attendees.length > 0 ? (
+            event.attendees.map((attendee) => (
+              <ListItem key={attendee._id}>
+                <Typography variant="body1" sx={{ fontSize: '1rem' }}>
+                  {attendee.username} ({attendee.email})
+                </Typography>
+              </ListItem>
+            ))
+          ) : (
+            <ListItem>
+              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                No attendees yet.
+              </Typography>
+            </ListItem>
+          )}
+        </List>
 
         {event.liveStreamUrl && (
           <Box mt={3} textAlign="center">
-            <Typography variant="h5" color="secondary">
+            <Typography variant="h5" color="secondary" gutterBottom>
               Live Streaming
             </Typography>
             <Button
@@ -87,6 +129,14 @@ const EventDetails = () => {
             >
               Watch Live Stream
             </Button>
+          </Box>
+        )}
+
+        {event.ended && (
+          <Box mt={4} sx={{ textAlign: 'center' }}>
+            <Typography variant="h6" color="text.secondary">
+              This event has ended.
+            </Typography>
           </Box>
         )}
       </Paper>
