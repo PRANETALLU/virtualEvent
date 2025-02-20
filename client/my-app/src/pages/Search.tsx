@@ -241,7 +241,7 @@ const Search = () => {
         placeholder="Search events..."
         value={searchQuery}
         onChange={e => setSearchQuery(e.target.value)}
-        sx={{ mb: 3 }}
+        sx={{ mb: 4 }}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -251,7 +251,7 @@ const Search = () => {
         }}
       />
 
-      <Box display="flex" gap={2} mb={3} justifyContent="center">
+      <Box display="flex" gap={2} mb={2} justifyContent="center">
         <FormControl sx={{ minWidth: 150 }}>
           <InputLabel sx={{ top: -8 }}>Price</InputLabel>
           <Select value={priceFilter} onChange={e => setPriceFilter(e.target.value)}>
