@@ -40,6 +40,7 @@ app.use("/events", eventRoutes);
 
 let activeStreams = {}; // Track active streams by event ID
 let eventAttendees = {}; // Track attendees for each event
+let eventMessages = {}; // Track messages for each event
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -49,6 +50,7 @@ io.on("connection", (socket) => {
     console.log(`Organizer joined: ${peerId} for event ${eventId}`);
     activeStreams[eventId] = { peerId, isStreamActive: false };
     eventAttendees[eventId] = { organizer: peerId, attendees: [] };
+    eventMessages[eventId] = []; // Initialize the message history for the event
   });
 
   // Handle viewer joining
@@ -96,15 +98,31 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle sending a message
+  socket.on("send-message", ({ eventId, message, userId }) => {
+    console.log(`Message received for event ${eventId}: ${message}`);
+    if (eventMessages[eventId]) {
+      // Add the message to the event's message history
+      eventMessages[eventId].push({ userId, message });
+      // Emit the message to all attendees (except the sender)
+      eventAttendees[eventId].attendees.forEach((attendeePeerId) => {
+        if (attendeePeerId !== socket.id) {
+          io.to(attendeePeerId).emit("new-message", { userId, message });
+        }
+      });
+    }
+  });
+
   // Handle disconnection
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
-    
+
     // Remove from active streams and attendees list
     for (const eventId in eventAttendees) {
       if (eventAttendees[eventId].organizer === socket.id) {
         delete activeStreams[eventId];
         delete eventAttendees[eventId];
+        delete eventMessages[eventId];
       } else {
         eventAttendees[eventId].attendees = eventAttendees[eventId].attendees.filter(id => id !== socket.id);
       }
