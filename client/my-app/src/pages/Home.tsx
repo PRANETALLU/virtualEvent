@@ -20,21 +20,6 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
-const eventCategories = [
-  "Music",
-  "Arts",
-  "Sports",
-  "Tech",
-  "Business",
-  "Education",
-  "Food",
-  "Health",
-  "Community",
-  "Travel",
-  "Gaming",
-  "Other"
-];
-
 interface Event {
   _id: string;
   title: string;
@@ -52,11 +37,16 @@ interface Event {
   ended: boolean;
 }
 
+const eventCategories = [
+  "Music", "Arts", "Sports", "Tech", "Business", "Education",
+  "Food", "Health", "Community", "Travel", "Gaming", "Other"
+];
+
 const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [open, setOpen] = useState<boolean>(false);
-  const [newEvent, setNewEvent] = useState<{ title: string; description: string; dateTime: string; price: string; venue: string; category: string }>({
+  const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
     dateTime: "",
@@ -84,8 +74,6 @@ const Home: React.FC = () => {
   const handleCreateEvent = async () => {
     try {
       const { data } = await axios.post("http://localhost:5000/events/create", newEvent, { withCredentials: true });
-      console.log("Current Events", events)
-      console.log("Added Data", data)
       setEvents([...events, data.event]);
       setOpen(false);
     } catch (error) {
@@ -102,94 +90,212 @@ const Home: React.FC = () => {
     }
   };
 
-  // Categorize events
   const now = new Date();
   const upcomingEvents = events.filter((event) => new Date(event.dateTime) > now && !event.ended);
   const inProgressEvents = events.filter((event) => new Date(event.dateTime) <= now && !event.ended);
   const completedEvents = events.filter((event) => event.ended);
 
   return (
-    <Box sx={{ pt: 8, pb: 4, px: 2, my: 4, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: "100%", maxWidth: "900px", mb: 3 }}>
-        <Typography variant="h3" color="primary">
-          Welcome {userInfo?.username}!
-        </Typography>
-        <Button variant="contained" color="primary" onClick={() => setOpen(true)} startIcon={<AddIcon />}>
-          Create Event
-        </Button>
-        <Button variant="outlined" onClick={() => navigate("/search")}> {/* Add the button to navigate to Search */}
-          Search Events
-        </Button>
-      </Stack>
-
-      {/* Event Creation Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Create New Event</DialogTitle>
-        <DialogContent>
-          <TextField label="Title" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, title: e.target.value }))} />
-          <TextField label="Description" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, description: e.target.value }))} />
-          <TextField type="datetime-local" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, dateTime: e.target.value }))} />
-          <TextField label="Venue" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, venue: e.target.value }))} />
-          <TextField label="Price" type="number" fullWidth margin="dense" onChange={(e) => setNewEvent((prev) => ({ ...prev, price: e.target.value }))} />
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={newEvent.category}
-              onChange={(e) =>
-                setNewEvent((prev) => ({ ...prev, category: e.target.value }))
-              }
+    <Box sx={{ 
+      minHeight: '100vh',
+      backgroundColor: '#f5f5f5',
+      pt: { xs: 4, md: 6 },
+      pb: 8,
+      marginTop: 10
+    }}>
+      <Box sx={{ 
+        maxWidth: '1200px',
+        mx: 'auto',
+        px: { xs: 2, sm: 4 }
+      }}>
+        {/* Header Section */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          mb: 6,
+          gap: 2
+        }}>
+          <Typography 
+            variant="h3" 
+            color="primary"
+            sx={{
+              fontWeight: 'bold',
+              fontSize: { xs: '2rem', sm: '2.5rem' }
+            }}
+          >
+            Welcome {userInfo?.username}!
+          </Typography>
+          <Stack 
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setOpen(true)}
+              startIcon={<AddIcon />}
+              sx={{ 
+                minWidth: '160px',
+                height: '48px'
+              }}
             >
-              {eventCategories.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {category}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)} color="secondary">
-            Cancel
-          </Button>
-          <Button onClick={handleCreateEvent} color="primary">
-            Create
-          </Button>
-        </DialogActions>
-      </Dialog>
+              Create Event
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/search")}
+              sx={{ 
+                minWidth: '160px',
+                height: '48px'
+              }}
+            >
+              Search Events
+            </Button>
+          </Stack>
+        </Box>
 
-      {/* Loading and No Events Message */}
-      {loading ? (
-        <Typography variant="h6" align="center">Loading events...</Typography>
-      ) : (
-        <>
-          {["Upcoming Events", "In Progress Events", "Completed Events"].map((category, index) => {
-            const eventLists = [upcomingEvents, inProgressEvents, completedEvents];
-            const eventColors = ["primary", "secondary", "textSecondary"];
-            const eventsInCategory = eventLists[index];
+        {/* Event Creation Dialog */}
+        <Dialog 
+          open={open} 
+          onClose={() => setOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ pb: 1 }}>
+            <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+              Create New Event
+            </Typography>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 2 }}>
+            <Stack spacing={3}>
+              <TextField
+                label="Title"
+                fullWidth
+                variant="outlined"
+                onChange={(e) => setNewEvent((prev) => ({ ...prev, title: e.target.value }))}
+              />
+              <TextField
+                label="Description"
+                fullWidth
+                multiline
+                rows={4}
+                variant="outlined"
+                onChange={(e) => setNewEvent((prev) => ({ ...prev, description: e.target.value }))}
+              />
+              <TextField
+                type="datetime-local"
+                fullWidth
+                variant="outlined"
+                onChange={(e) => setNewEvent((prev) => ({ ...prev, dateTime: e.target.value }))}
+              />
+              <TextField
+                label="Venue"
+                fullWidth
+                variant="outlined"
+                onChange={(e) => setNewEvent((prev) => ({ ...prev, venue: e.target.value }))}
+              />
+              <TextField
+                label="Price"
+                type="number"
+                fullWidth
+                variant="outlined"
+                onChange={(e) => setNewEvent((prev) => ({ ...prev, price: e.target.value }))}
+              />
+              <FormControl fullWidth variant="outlined">
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={newEvent.category}
+                  onChange={(e) => setNewEvent((prev) => ({ ...prev, category: e.target.value }))}
+                  label="Category"
+                >
+                  {eventCategories.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button 
+              onClick={() => setOpen(false)} 
+              color="inherit"
+              variant="outlined"
+              sx={{ minWidth: '100px' }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateEvent} 
+              color="primary"
+              variant="contained"
+              sx={{ minWidth: '100px' }}
+            >
+              Create
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-            return (
-              <Box key={category} sx={{ mt: 4, textAlign: "center", width: "100%" }}>
-                <Typography variant="h4" color={eventColors[index]} gutterBottom>
-                  {category}
+        {/* Events Sections */}
+        {loading ? (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="h6">Loading events...</Typography>
+          </Box>
+        ) : (
+          <Stack spacing={8}>
+            {[
+              { title: "Upcoming Events", events: upcomingEvents, color: "primary" },
+              { title: "In Progress Events", events: inProgressEvents, color: "secondary" },
+              { title: "Completed Events", events: completedEvents, color: "text.secondary" }
+            ].map(({ title, events, color }) => (
+              <Box key={title}>
+                <Typography 
+                  variant="h4" 
+                  color={color}
+                  sx={{ 
+                    mb: 4,
+                    fontWeight: 'bold',
+                    textAlign: { xs: 'left', sm: 'center' }
+                  }}
+                >
+                  {title}
                 </Typography>
-                {eventsInCategory.length > 0 ? (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 4 }}>
-                    {eventsInCategory.map((event) => (
-                      <Box key={event._id} sx={{ width: "100%", maxWidth: "320px" }}>
+                {events.length > 0 ? (
+                  <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                      md: 'repeat(3, 1fr)'
+                    },
+                    gap: 3
+                  }}>
+                    {events.map((event) => (
+                      <Box key={event._id}>
                         <EventCard {...event} onDelete={handleDeleteEvent} />
                       </Box>
                     ))}
                   </Box>
                 ) : (
-                  <Typography variant="h6" color="textSecondary">
+                  <Typography 
+                    variant="h6" 
+                    color="text.secondary"
+                    sx={{ 
+                      textAlign: 'center',
+                      py: 4
+                    }}
+                  >
                     No events available.
                   </Typography>
                 )}
               </Box>
-            );
-          })}
-        </>
-      )}
+            ))}
+          </Stack>
+        )}
+      </Box>
     </Box>
   );
 };
