@@ -20,6 +20,12 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
+interface Attendee {
+  _id: string;
+  username: string;
+  email: string;
+}
+
 interface Event {
   _id: string;
   title: string;
@@ -33,6 +39,7 @@ interface Event {
     username: string;
     email: string;
   };
+  attendees: Attendee[];
   liveStreamUrl?: string;
   ended: boolean;
 }

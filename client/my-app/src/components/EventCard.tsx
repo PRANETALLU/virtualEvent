@@ -5,6 +5,12 @@ import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { DeleteOutline } from "@mui/icons-material";
 
+interface Attendee {
+  _id: string;
+  username: string;
+  email: string;
+}
+
 interface EventProps {
   _id?: string;
   title: string;
@@ -18,16 +24,19 @@ interface EventProps {
     username?: string;
     email: string;
   };
+  attendees: Attendee[];
   liveStreamUrl?: string;
   ended: boolean;
   onDelete: (deletedEventId: string) => void;
 }
 
-const EventCard = ({ _id, title, description, dateTime, venue, price, category, organizer, liveStreamUrl, ended, onDelete }: EventProps) => {
+const EventCard = ({ _id, title, description, dateTime, venue, price, category, organizer, attendees, liveStreamUrl, ended, onDelete }: EventProps) => {
   const navigate = useNavigate();
   const { userInfo } = useUser();
+  const [isAttending, setIsAttending] = useState(attendees.some((attendee) => attendee._id === userInfo?.id));
 
-  // Dialog state
+  const isOrganizer = organizer?._id === userInfo?.id;
+
   const [openDialog, setOpenDialog] = useState(false);
 
   const startLivestream = async () => {
@@ -40,13 +49,27 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
   };
 
   const handleDelete = async () => {
-    if (_id) { 
+    if (_id) {
       try {
         onDelete(_id);
         setOpenDialog(false);
       } catch (error) {
         console.error("Error deleting event:", error);
       }
+    }
+  };
+
+  const handleJoinEvent = async () => {
+    if (!_id || isAttending) return;
+
+    try {
+      const response = await axios.post(`http://localhost:5000/events/${_id}/attendees`, {}, { withCredentials: true });
+
+      if (response.status === 200) {
+        setIsAttending(true);
+      }
+    } catch (error) {
+      console.error("Error joining event:", error);
     }
   };
 
@@ -104,6 +127,17 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
             )
           )}
         </div>
+        {!isAttending && !isOrganizer && (
+          <Button variant="contained" color="success" onClick={handleJoinEvent}>
+            Join Event
+          </Button>
+        )}
+
+        {isAttending && !isOrganizer && (
+          <Button variant="contained" disabled>
+            Already Joined
+          </Button>
+        )}
       </CardContent>
 
       {/* Confirmation Dialog */}
