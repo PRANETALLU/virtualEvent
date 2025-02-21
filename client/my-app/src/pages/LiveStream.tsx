@@ -240,21 +240,21 @@ const LiveStream = () => {
     <Box
       sx={{
         display: "flex",
-        flexDirection: "row",
         height: "100vh",
-        padding: 3,
+        padding: 2,
+        maxWidth: "1600px",
+        margin: "0 auto"
       }}
     >
       <Box
         sx={{
-          flex: 1,
+          width: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
+          gap: 2
         }}
       >
-        <Typography variant="h4" fontWeight="bold">
+        <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>
           {isOrganizer ? "Organizer Live Stream" : "Attendee View"}
         </Typography>
 
@@ -267,119 +267,187 @@ const LiveStream = () => {
         <Paper
           elevation={3}
           sx={{
-            width: "80%",
-            maxWidth: 800,
-            padding: 2,
-            textAlign: "center",
-            borderRadius: 3,
-            backgroundColor: "#f9f9f9",
+            display: "flex",
+            height: "calc(100vh - 120px)",
+            borderRadius: 2,
+            overflow: "hidden",
+            backgroundColor: "#f9f9f9"
           }}
         >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            style={{
-              width: "100%",
-              maxHeight: "60vh",
-              borderRadius: 10,
-              objectFit: "cover",
-              backgroundColor: "black",
-              display: isStreamActive ? "block" : "none",
+          {/* Video Stream Section */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              padding: 3,
+              minWidth: 0 // Prevent flex item from overflowing
             }}
-          />
-
-          {!isStreamActive && (
-            <Typography variant="h6" color="textSecondary">
-              Stream is not active
-            </Typography>
-          )}
-
-          {isOrganizer && !isStreamActive && (
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2, px: 3, py: 1 }}
-              onClick={handleStartStream}
+          >
+            <Box
+              sx={{
+                position: "relative",
+                width: "100%",
+                height: "calc(100% - 80px)",
+                backgroundColor: "black",
+                borderRadius: 1,
+                overflow: "hidden"
+              }}
             >
-              Start Stream
-            </Button>
-          )}
-
-          {isOrganizer && isStreamActive && (
-            <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-              <Button
-                variant="contained"
-                color={isMicMuted ? "secondary" : "primary"}
-                onClick={handleMuteUnmute}
-              >
-                {isMicMuted ? "Unmute Mic" : "Mute Mic"}
-              </Button>
-              <Button
-                variant="contained"
-                color={isCameraDisabled ? "secondary" : "primary"}
-                onClick={handleDisableEnableCamera}
-              >
-                {isCameraDisabled ? "Enable Camera" : "Disable Camera"}
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                sx={{ ml: 2 }}
-                onClick={handleStopStream}
-              >
-                Stop Stream
-              </Button>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: isStreamActive ? "block" : "none"
+                }}
+              />
+              {!isStreamActive && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)"
+                  }}
+                >
+                  <Typography variant="h6" color="white">
+                    Stream is not active
+                  </Typography>
+                </Box>
+              )}
             </Box>
-          )}
 
-          {!isOrganizer && isStreamActive && (
-            <Button
-              variant="contained"
-              color="secondary"
-              sx={{ mt: 2 }}
-              onClick={handleStopStream}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 2,
+                mt: 3
+              }}
             >
-              Stop Watching
-            </Button>
-          )}
+              {isOrganizer && !isStreamActive && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleStartStream}
+                >
+                  Start Stream
+                </Button>
+              )}
+
+              {isOrganizer && isStreamActive && (
+                <>
+                  <Button
+                    variant="contained"
+                    color={isMicMuted ? "secondary" : "primary"}
+                    onClick={handleMuteUnmute}
+                  >
+                    {isMicMuted ? "Unmute Mic" : "Mute Mic"}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color={isCameraDisabled ? "secondary" : "primary"}
+                    onClick={handleDisableEnableCamera}
+                  >
+                    {isCameraDisabled ? "Enable Camera" : "Disable Camera"}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={handleStopStream}
+                  >
+                    Stop Stream
+                  </Button>
+                </>
+              )}
+
+              {!isOrganizer && isStreamActive && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleStopStream}
+                >
+                  Stop Watching
+                </Button>
+              )}
+            </Box>
+          </Box>
+
+          {/* Chat Section */}
+          <Box
+            sx={{
+              width: "300px",
+              borderLeft: "1px solid #eaeaea",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff"
+            }}
+          >
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              sx={{
+                p: 2,
+                borderBottom: "1px solid #eaeaea"
+              }}
+            >
+              Live Chat
+            </Typography>
+
+            <List
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                p: 2,
+                height: "calc(100% - 120px)"
+              }}
+            >
+              {chatMessages.map((msg, index) => (
+                <ListItem
+                  key={index}
+                  sx={{
+                    py: 1,
+                    px: 0,
+                    borderBottom: "1px solid #f5f5f5"
+                  }}
+                >
+                  {msg}
+                </ListItem>
+              ))}
+            </List>
+
+            <Box
+              sx={{
+                p: 2,
+                borderTop: "1px solid #eaeaea",
+                backgroundColor: "#fff"
+              }}
+            >
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  placeholder="Type a message"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSendMessage}
+                  sx={{ minWidth: "80px" }}
+                >
+                  Send
+                </Button>
+              </Box>
+            </Box>
+          </Box>
         </Paper>
-      </Box>
-
-      <Box
-        sx={{
-          width: 350,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: 2,
-          borderLeft: "1px solid #ccc",
-          backgroundColor: "#fff",
-        }}
-      >
-        <Typography variant="h6" fontWeight="bold">
-          Live Chat
-        </Typography>
-
-        <List sx={{ overflowY: "auto", flex: 1, marginBottom: 2 }}>
-          {chatMessages.map((msg, index) => (
-            <ListItem key={index}>{msg}</ListItem>
-          ))}
-        </List>
-
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <TextField
-            variant="outlined"
-            fullWidth
-            label="Type a message"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-          />
-          <Button variant="contained" color="primary" onClick={handleSendMessage}>
-            Send
-          </Button>
-        </Box>
       </Box>
     </Box>
   );
