@@ -225,11 +225,13 @@ const LiveStream = () => {
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
-      socket?.emit("send-message", {
+      const messageData = {
         eventId,
         message: newMessage,
         sender: userInfo?.username,
-      });
+      };
+      socket?.emit("send-message", messageData);
+      setChatMessages((prevMessages) => [...prevMessages, `${userInfo?.username}: ${newMessage}`]);
       setNewMessage("");
     }
   };
