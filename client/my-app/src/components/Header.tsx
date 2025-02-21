@@ -1,7 +1,7 @@
 import { AppBar, Toolbar, Button, Box } from "@mui/material";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export const Header: React.FC = () => {
     const { userInfo, setUserInfo } = useUser();
@@ -22,7 +22,9 @@ export const Header: React.FC = () => {
         <AppBar position="fixed" color="default">
             <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <img src="streamifylogo.png" alt="Streamify Logo" style={{ width: 200, height: "auto" }} />
+                    <Link to="/" style={{ textDecoration: 'none' }}>
+                        <img src="streamifylogo.png" alt="Streamify Logo" style={{ width: 200, height: "auto" }} />
+                    </Link>
                 </Box>
                 {userInfo && (
                     <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
