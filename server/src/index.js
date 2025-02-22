@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
+const mongooseExpress = require("mongoose");
 const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
@@ -29,77 +29,73 @@ app.use(
 );
 
 const mongoURI = process.env.MONGO_URI;
-mongoose.connect(mongoURI);
+mongooseExpress.connect(mongoURI);
 
-const db = mongoose.connection;
+const db = mongooseExpress.connection;
 db.on("error", (error) => console.error("MongoDB connection error:", error));
 db.once("open", () => console.log("MongoDB connected"));
 
 app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 
-
-// Stream tracking with metadata
+// Stream tracking and chat storage
 const activeStreams = new Map(); // Map eventId to stream info
 const eventParticipants = new Map(); // Map eventId to participants
+const eventMessages = {}; // In-memory message store per event
 
-// Utility function to get room participants
+// Utility to get room participants
 const getRoomParticipants = (eventId) => {
   return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };
 };
 
-// Utility function to broadcast to room
-const broadcastToRoom = (eventId, event, data, excludeSocketId = null) => {
+// Utility to broadcast to all participants in a room
+const broadcastToRoom = (eventId, eventName, data, excludeSocketId = null) => {
   const room = getRoomParticipants(eventId);
   const sockets = Array.from(room.viewers);
   if (room.organizer) sockets.push(room.organizer);
-  
-  sockets.forEach(socketId => {
+  sockets.forEach((socketId) => {
     if (socketId !== excludeSocketId) {
-      io.to(socketId).emit(event, data);
+      io.to(socketId).emit(eventName, data);
     }
   });
 };
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
-  
-  // Handle organizer joining
+
+  // Organizer joins stream
   socket.on("organizer-joined", ({ peerId, eventId }) => {
     console.log(`Organizer joined: ${peerId} for event ${eventId}`);
-    
+
     const streamInfo = activeStreams.get(eventId) || {
       organizerPeerId: peerId,
       isActive: false,
       startTime: null
     };
-    
     activeStreams.set(eventId, streamInfo);
-    
+
     const participants = getRoomParticipants(eventId);
     participants.organizer = socket.id;
     eventParticipants.set(eventId, participants);
-    
+
     socket.join(eventId);
-    
-    // Send current stream status to organizer
+
     socket.emit("stream-status", {
       active: streamInfo.isActive,
       organizerPeerId: streamInfo.organizerPeerId
     });
   });
 
-  // Handle viewer joining
+  // Viewer joins stream
   socket.on("viewer-joined", ({ peerId, eventId }) => {
     console.log(`Viewer joined: ${peerId} for event ${eventId}`);
-    
+
     const participants = getRoomParticipants(eventId);
     participants.viewers.add(socket.id);
     eventParticipants.set(eventId, participants);
-    
+
     socket.join(eventId);
-    
-    // Send current stream status to viewer
+
     const streamInfo = activeStreams.get(eventId);
     if (streamInfo) {
       socket.emit("stream-status", {
@@ -109,40 +105,34 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle stream start
+  // Start stream event
   socket.on("start-stream", ({ peerId, eventId }) => {
     console.log(`Stream started by organizer: ${peerId} for event ${eventId}`);
-    
+
     const streamInfo = {
       organizerPeerId: peerId,
       isActive: true,
       startTime: Date.now()
     };
-    
     activeStreams.set(eventId, streamInfo);
-    
-    // Notify all room participants
-    broadcastToRoom(eventId, "stream-started", {
-      organizerPeerId: peerId
-    });
+
+    broadcastToRoom(eventId, "stream-started", { organizerPeerId: peerId });
   });
 
-  // Handle stream stop
+  // Stop stream event
   socket.on("stop-stream", ({ eventId }) => {
     console.log(`Stream stopped for event ${eventId}`);
-    
+
     const streamInfo = activeStreams.get(eventId);
     if (streamInfo) {
       streamInfo.isActive = false;
       streamInfo.startTime = null;
       activeStreams.set(eventId, streamInfo);
-      
-      // Notify all room participants
       broadcastToRoom(eventId, "stream-stopped", {});
     }
   });
 
-  // Handle stream status check
+  // Check stream status
   socket.on("check-stream-status", ({ eventId }) => {
     const streamInfo = activeStreams.get(eventId);
     socket.emit("stream-status", {
@@ -151,11 +141,30 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Handle disconnection
+  // Chat: client joins an event room
+  socket.on("join-event", (eventId) => {
+    console.log(`Socket ${socket.id} joined event ${eventId}`);
+    socket.join(eventId);
+
+    if (eventMessages[eventId]) {
+      socket.emit("previous-messages", eventMessages[eventId]);
+    }
+  });
+
+  // Chat: client sends a new message
+  socket.on("send-message", (data) => {
+    const { eventId, message } = data;
+    if (!eventMessages[eventId]) {
+      eventMessages[eventId] = [];
+    }
+    eventMessages[eventId].push(message);
+    io.to(eventId).emit("new-message", message);
+  });
+
+  // Handle disconnection and clean up participant data
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
-    
-    // Clean up all events this socket was participating in
+
     eventParticipants.forEach((participants, eventId) => {
       // If organizer disconnected
       if (participants.organizer === socket.id) {
@@ -168,11 +177,9 @@ io.on("connection", (socket) => {
         }
         participants.organizer = null;
       }
-      
       // Remove from viewers if present
       participants.viewers.delete(socket.id);
-      
-      // Clean up empty rooms
+      // Clean up if no participants remain
       if (!participants.organizer && participants.viewers.size === 0) {
         eventParticipants.delete(eventId);
         activeStreams.delete(eventId);

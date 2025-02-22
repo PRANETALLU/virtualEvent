@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
 import { Box, Button, Typography, Paper, TextField, List, ListItem } from "@mui/material";
+import Chat from "../components/Chat";
 
 const SOCKET_URL = "http://localhost:5000";
 
@@ -427,75 +428,7 @@ const LiveStream = () => {
           </Box>
 
           {/* Chat Section */}
-          <Box
-            sx={{
-              width: "300px",
-              borderLeft: "1px solid #eaeaea",
-              display: "flex",
-              flexDirection: "column",
-              backgroundColor: "#fff"
-            }}
-          >
-            <Typography
-              variant="h6"
-              fontWeight="bold"
-              sx={{
-                p: 2,
-                borderBottom: "1px solid #eaeaea"
-              }}
-            >
-              Live Chat
-            </Typography>
-
-            <List
-              sx={{
-                flex: 1,
-                overflowY: "auto",
-                p: 2,
-                height: "calc(100% - 120px)"
-              }}
-            >
-              {chatMessages.map((msg, index) => (
-                <ListItem
-                  key={index}
-                  sx={{
-                    py: 1,
-                    px: 0,
-                    borderBottom: "1px solid #f5f5f5"
-                  }}
-                >
-                  {msg}
-                </ListItem>
-              ))}
-            </List>
-
-            <Box
-              sx={{
-                p: 2,
-                borderTop: "1px solid #eaeaea",
-                backgroundColor: "#fff"
-              }}
-            >
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <TextField
-                  variant="outlined"
-                  size="small"
-                  fullWidth
-                  placeholder="Type a message"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSendMessage}
-                  sx={{ minWidth: "80px" }}
-                >
-                  Send
-                </Button>
-              </Box>
-            </Box>
-          </Box>
+          {eventId && <Chat eventId={eventId} />}
         </Paper>
       </Box>
     </Box>

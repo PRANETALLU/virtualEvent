@@ -1,66 +1,108 @@
-import { useEffect, useState } from "react";
+// Chat.tsx
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { io, Socket } from "socket.io-client";
+import { Box, TextField, Button, Typography, List, ListItem } from "@mui/material";
 
-interface Message {
-  username: string;
+interface ChatMessage {
+  sender: string;
   message: string;
+  createdAt: number;
 }
 
-interface ChatRoomProps {
+interface ChatProps {
   eventId: string;
 }
 
-const Chat: React.FC<ChatRoomProps> = ({ eventId }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState<string>("");
-  const [username, setUsername] = useState<string>("User");
+const SOCKET_URL = "http://localhost:5000";
+
+const Chat: React.FC<ChatProps> = ({ eventId }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState<string>("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Initialize socket and join event room
   useEffect(() => {
-    const newSocket: Socket = io("http://localhost:5000", { withCredentials: true });
-    setSocket(newSocket);
+    const socketInstance = io(SOCKET_URL);
+    setSocket(socketInstance);
 
-    // Join event-specific chat room
-    newSocket.emit("join_event", eventId);
+    socketInstance.emit("join-event", eventId);
 
-    // Listen for incoming messages
-    newSocket.on("receive_message", (data: Message) => {
-      setMessages((prevMessages) => [...prevMessages, data]);
+    socketInstance.on("previous-messages", (prevMessages: ChatMessage[]) => {
+      setMessages(prevMessages);
     });
 
-    // Cleanup when component unmounts
+    socketInstance.on("new-message", (message: ChatMessage) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
     return () => {
-      newSocket.disconnect();
+      socketInstance.disconnect();
     };
   }, [eventId]);
 
-  const sendMessage = () => {
-    if (socket && message.trim() !== "") {
-      socket.emit("send_message", { eventId, message, username });
-      setMessage(""); // Clear input after sending
+  // Auto-scroll to the bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = () => {
+    if (newMessage.trim() && socket) {
+      const messageData: ChatMessage = {
+        sender: "User", // Replace with actual user info (e.g., from context or props)
+        message: newMessage.trim(),
+        createdAt: Date.now(),
+      };
+      socket.emit("send-message", { eventId, message: messageData });
+      setNewMessage("");
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSendMessage();
     }
   };
 
   return (
-    <div>
-      <div>
-        <h2>Event Chat</h2>
-        <div>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        padding: 2,
+        maxWidth: "500px",
+        borderLeft: "1px solid #eaeaea",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+        Live Event Chat
+      </Typography>
+      <Box sx={{ flex: 1, overflowY: "auto", mb: 2 }}>
+        <List>
           {messages.map((msg, index) => (
-            <p key={index}>
-              <strong>{msg.username}:</strong> {msg.message}
-            </p>
+            <ListItem key={index}>
+              <strong>{msg.sender}: </strong> {msg.message}
+            </ListItem>
           ))}
-        </div>
-      </div>
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type your message..."
-      />
-      <button onClick={sendMessage}>Send</button>
-    </div>
+        </List>
+        <div ref={messagesEndRef} />
+      </Box>
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Type a message"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <Button variant="contained" onClick={handleSendMessage}>
+          Send
+        </Button>
+      </Box>
+    </Box>
   );
 };
 
