@@ -39,16 +39,15 @@ app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 
 // Stream tracking and chat storage
-const activeStreams = new Map(); // Map eventId to stream info
-const eventParticipants = new Map(); // Map eventId to participants
-const eventMessages = {}; // In-memory message store per event
+// const activeStreams = new Map(); 
+// const eventParticipants = new Map(); 
+const eventMessages = {}; 
+const events = {};
 
-// Utility to get room participants
-const getRoomParticipants = (eventId) => {
+/*const getRoomParticipants = (eventId) => {
   return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };
 };
 
-// Utility to broadcast to all participants in a room
 const broadcastToRoom = (eventId, eventName, data, excludeSocketId = null) => {
   const room = getRoomParticipants(eventId);
   const sockets = Array.from(room.viewers);
@@ -58,13 +57,17 @@ const broadcastToRoom = (eventId, eventName, data, excludeSocketId = null) => {
       io.to(socketId).emit(eventName, data);
     }
   });
-};
+};*/
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  // Organizer joins stream
-  socket.on("organizer-joined", ({ peerId, eventId }) => {
+  socket.on("organizer-ready", ({ eventId, peerId }) => {
+    events[eventId] = peerId;
+    socket.broadcast.emit("organizer-ready", { peerId });
+  });
+
+  /*socket.on("organizer-joined", ({ peerId, eventId }) => {
     console.log(`Organizer joined: ${peerId} for event ${eventId}`);
 
     const streamInfo = activeStreams.get(eventId) || {
@@ -139,7 +142,7 @@ io.on("connection", (socket) => {
       active: streamInfo?.isActive || false,
       organizerPeerId: streamInfo?.organizerPeerId || null
     });
-  });
+  });*/
 
   // Chat: client joins an event room
   socket.on("join-event", (eventId) => {
@@ -165,7 +168,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
 
-    eventParticipants.forEach((participants, eventId) => {
+    /*eventParticipants.forEach((participants, eventId) => {
       // If organizer disconnected
       if (participants.organizer === socket.id) {
         const streamInfo = activeStreams.get(eventId);
@@ -186,7 +189,7 @@ io.on("connection", (socket) => {
       } else {
         eventParticipants.set(eventId, participants);
       }
-    });
+    });*/
   });
 });
 

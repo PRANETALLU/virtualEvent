@@ -140,14 +140,14 @@ const Home: React.FC = () => {
             direction={{ xs: 'column', sm: 'row' }}
             spacing={2}
           >
-            <Button
+            {/*<Button
               onClick={() => navigate("/lStream")}
               color="primary"
               variant="contained"
               sx={{ minWidth: '100px' }}
             >
               LStream
-            </Button>
+            </Button>*/}
             <Button
               variant="contained"
               color="primary"

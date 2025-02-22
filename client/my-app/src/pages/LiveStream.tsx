@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Peer from "peerjs";
-import { io, Socket } from "socket.io-client";
-import { useNavigate, useParams } from "react-router-dom";
-import { useUser } from "../context/UserContext";
+import io, { Socket } from "socket.io-client";
 import axios from "axios";
-import { Box, Button, Typography, Paper, TextField, List, ListItem } from "@mui/material";
-import Chat from "../components/Chat";
+import { useUser } from "../context/UserContext";
 
 const SOCKET_URL = "http://localhost:5000";
 
-const LiveStream = () => {
+const LiveStreamPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerRef = useRef<Peer | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -23,8 +21,6 @@ const LiveStream = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const { userInfo } = useUser();
   const [event, setEvent] = useState<any>(null);
-  const [chatMessages, setChatMessages] = useState<string[]>([]);
-  const [newMessage, setNewMessage] = useState<string>("");
   const navigate = useNavigate();
 
   // Fetch event details
@@ -48,391 +44,132 @@ const LiveStream = () => {
 
   const isOrganizer = event?.organizer?._id === userInfo?.id;
 
-  // Socket connection setup
   useEffect(() => {
-    const socketInstance = io(SOCKET_URL, {
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-    });
+    if (!event) return;
 
-    socketInstance.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setError("Failed to connect to server");
-    });
+    const newSocket = io(SOCKET_URL);
+    setSocket(newSocket);
 
-    socketInstance.on("stream-started", (data: { organizerPeerId: string }) => {
-      setIsStreamActive(true);
-      setOrganizerPeerId(data.organizerPeerId);
-      console.log("Stream started with organizer peer ID:", data.organizerPeerId);
-    });
+    const newPeer = new Peer();
+    peerRef.current = newPeer;
 
-    socketInstance.on("stream-stopped", () => {
-      handleStreamStop();
-    });
-
-    socketInstance.on("stream-status", (data: { active: boolean; organizerPeerId: string | null }) => {
-      setIsStreamActive(data.active);
-      setOrganizerPeerId(data.organizerPeerId);
-      console.log("Stream status updated:", data);
-    });
-
-    socketInstance.on("new-message", (message: string) => {
-      setChatMessages((prevMessages) => [...prevMessages, message]);
-    });
-
-    setSocket(socketInstance);
-
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, []);
-
-  // Peer connection setup
-  useEffect(() => {
-    if (!socket) return;
-
-    const peer = new Peer({
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:global.stun.twilio.com:3478" },
-          {
-            urls: "turn:numb.viagenie.ca",
-            username: "webrtc@live.com",
-            credential: "muazkh"
-          }
-        ],
-      },
-      debug: 3,
-    });
-
-    peerRef.current = peer;
-
-    peer.on("open", (id) => {
-      console.log("Peer connection opened with ID:", id);
+    newPeer.on("open", (id) => {
       setPeerId(id);
-      socket.emit(isOrganizer ? "organizer-joined" : "viewer-joined", {
-        peerId: id,
-        eventId,
-      });
-      socket.emit("check-stream-status", { eventId });
-    });
-
-    if (!isOrganizer) {
-      // Viewer peer handling
-      peer.on("call", async (call) => {
-        console.log("Receiving call from organizer");
-        call.answer(); // Answer without sending stream back
-
-        call.on("stream", (remoteStream) => {
-          console.log("Received remote stream");
-          if (videoRef.current) {
-            videoRef.current.srcObject = remoteStream;
-            videoRef.current.play().catch(err => {
-              console.error("Error playing remote stream:", err);
-              videoRef.current!.controls = true;
-            });
+      console.log("My Peer ID:", id);
+      if (isOrganizer) {
+        newSocket.emit("organizer-ready", { eventId, peerId: id });
+        
+        // Handle incoming calls from viewers
+        newPeer.on("call", (call) => {
+          if (streamRef.current) {
+            call.answer(streamRef.current);
+            console.log("Answering viewer call");
           }
         });
+      }
+    });
 
-        call.on("error", (error) => {
-          console.error("Call error:", error);
-          setError("Error receiving stream");
-        });
-      });
-    }
-
-    peer.on("error", (error) => {
-      console.error("Peer connection error:", error);
-      setError("Failed to establish peer connection");
+    newSocket.on("organizer-ready", ({ peerId }) => {
+      setOrganizerPeerId(peerId);
+      console.log("Organizer is live:", peerId);
     });
 
     return () => {
-      cleanupStream();
+      newSocket.disconnect();
+      peerRef.current?.destroy();
     };
-  }, [socket, isOrganizer, eventId]);
+  }, [event, isOrganizer, eventId]);
 
-  // Viewer connection to organizer stream
+  // Separate useEffect for viewer connection
   useEffect(() => {
-    if (!isOrganizer && isStreamActive && organizerPeerId && peerRef.current) {
-      connectToOrganizerStream();
-    }
-  }, [isStreamActive, organizerPeerId, isOrganizer]);
-
-  const connectToOrganizerStream = async () => {
-    if (!organizerPeerId || !peerRef.current) return;
-
-    try {
-      console.log("Connecting to organizer peer:", organizerPeerId);
-      const call = peerRef.current.call(organizerPeerId, new MediaStream());
-
-      call.on("stream", (remoteStream) => {
-        console.log("Received organizer's stream");
-        if (videoRef.current) {
-          videoRef.current.srcObject = remoteStream;
-          videoRef.current.play().catch(err => {
-            console.error("Error playing remote stream:", err);
-            videoRef.current!.controls = true;
+    if (!isOrganizer && organizerPeerId && peerRef.current) {
+      console.log("Viewer connecting to organizer:", organizerPeerId);
+      
+      // Create an empty stream for the initial connection
+      navigator.mediaDevices.getUserMedia({ video: false, audio: false })
+        .then(emptyStream => {
+          const call = peerRef.current?.call(organizerPeerId, emptyStream);
+          
+          call?.on("stream", (remoteStream) => {
+            console.log("Received organizer stream");
+            if (videoRef.current) {
+              videoRef.current.srcObject = remoteStream;
+            }
           });
-        }
-      });
 
-      call.on("error", (error) => {
-        console.error("Call error:", error);
-        setError("Failed to connect to organizer's stream");
-      });
-    } catch (err) {
-      console.error("Error connecting to organizer:", err);
-      setError("Failed to connect to stream");
+          call?.on("error", (err) => {
+            console.error("Peer call error:", err);
+            setError("Failed to connect to stream");
+          });
+        })
+        .catch(err => {
+          console.error("Failed to create empty stream:", err);
+          setError("Failed to initialize viewer connection");
+        });
     }
-  };
+  }, [organizerPeerId, isOrganizer]);
 
-  const handleStartStream = async () => {
-    if (!isOrganizer || !socket || !peerRef.current) return;
-    console.log("Peer ID before starting stream:", peerId);
-
+  const startStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+        video: !isCameraDisabled,
+        audio: !isMicMuted,
       });
-
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(err => {
-          console.error("Local preview failed:", err);
-          videoRef.current!.controls = true;
-        });
       }
 
-      // Set up peer call handling for organizer
-      peerRef.current.on("call", (call) => {
-        console.log("Answering call from viewer:", call.peer);
-        call.answer(stream);
-      });
-
-      socket.emit("start-stream", { peerId, eventId });
       setIsStreamActive(true);
+      console.log("Streaming started.");
 
-    } catch (err) {
-      console.error("Media access error:", err);
-      setError("Failed to access camera/microphone - please check permissions");
-    }
-  };
-
-  const handleStreamStop = () => {
-    setIsStreamActive(false);
-    setOrganizerPeerId(null);
-    cleanupStream();
-  };
-
-  const cleanupStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    if (peerRef.current) {
-      peerRef.current.destroy();
-    }
-  };
-
-  const handleStopStream = async () => {
-    try {
-      if (socket) {
-        socket.emit("stop-stream", { eventId });
+      // Re-emit organizer-ready to notify any viewers that joined before the stream started
+      if (socket && peerId) {
+        socket.emit("organizer-ready", { eventId, peerId });
       }
-
-      handleStreamStop();
-
-      await axios.post(
-        `${SOCKET_URL}/events/${eventId}/livestream/stop`,
-        {},
-        { withCredentials: true }
-      );
-
-      setTimeout(() => navigate("/home"), 500);
     } catch (error) {
-      console.error("Error stopping stream:", error);
-      setError("Failed to stop stream");
+      console.error("Error starting stream:", error);
+      setError("Failed to start streaming");
     }
   };
-
-  const handleMuteUnmute = () => {
+  
+  const toggleMic = () => {
     if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMicMuted(!audioTrack.enabled);
-      }
+      streamRef.current.getAudioTracks().forEach((track) => (track.enabled = !isMicMuted));
+      setIsMicMuted(!isMicMuted);
     }
   };
 
-  const handleDisableEnableCamera = () => {
+  const toggleCamera = () => {
     if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCameraDisabled(!videoTrack.enabled);
-      }
-    }
-  };
-
-  const handleSendMessage = () => {
-    if (newMessage.trim() && socket) {
-      const messageData = {
-        eventId,
-        message: newMessage,
-        sender: userInfo?.username,
-      };
-      socket.emit("send-message", messageData);
-      setChatMessages((prevMessages) => [...prevMessages, `${userInfo?.username}: ${newMessage}`]);
-      setNewMessage("");
+      streamRef.current.getVideoTracks().forEach((track) => (track.enabled = !isCameraDisabled));
+      setIsCameraDisabled(!isCameraDisabled);
     }
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        height: "100vh",
-        padding: 2,
-        maxWidth: "1600px",
-        margin: "0 auto"
-      }}
-    >
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2
-        }}
-      >
-        <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>
-          {isOrganizer ? "Organizer Live Stream" : "Attendee View"}
-        </Typography>
+    <div>
+      <h1>{isOrganizer ? "Live Streaming" : "Watching Live Stream"}</h1>
 
-        {error && (
-          <Typography color="error" sx={{ mb: 2 }}>
-            {error}
-          </Typography>
-        )}
+      {error && <p className="error">{error}</p>}
 
-        <Paper
-          elevation={3}
-          sx={{
-            display: "flex",
-            height: "calc(100vh - 120px)",
-            borderRadius: 2,
-            overflow: "hidden",
-            backgroundColor: "#f9f9f9"
-          }}
-        >
-          {/* Video Stream Section */}
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              padding: 3,
-              minWidth: 0
-            }}
-          >
-            <Box
-              sx={{
-                position: "relative",
-                width: "100%",
-                height: "calc(100% - 80px)",
-                backgroundColor: "black",
-                borderRadius: 1,
-                overflow: "hidden"
-              }}
-            >
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: isStreamActive ? "block" : "none"
-                }}
-              />
-              {!isStreamActive && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)"
-                  }}
-                >
-                  <Typography variant="h6" color="white">
-                    Stream is not active
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+      <video ref={videoRef} autoPlay playsInline muted={isOrganizer} />
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 2,
-                mt: 3
-              }}
-            >
-              {isOrganizer && !isStreamActive && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleStartStream}
-                >
-                  Start Stream
-                </Button>
-              )}
-
-              {isOrganizer && isStreamActive && (
-                <>
-                  <Button
-                    variant="contained"
-                    color={isMicMuted ? "secondary" : "primary"}
-                    onClick={handleMuteUnmute}
-                  >
-                    {isMicMuted ? "Unmute Mic" : "Mute Mic"}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color={isCameraDisabled ? "secondary" : "primary"}
-                    onClick={handleDisableEnableCamera}
-                  >
-                    {isCameraDisabled ? "Enable Camera" : "Disable Camera"}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={handleStopStream}
-                  >
-                    Stop Stream
-                  </Button>
-                </>
-              )}
-            </Box>
-          </Box>
-
-          {/* Chat Section */}
-          {eventId && <Chat eventId={eventId} />}
-        </Paper>
-      </Box>
-    </Box>
-  ); 
+      {isOrganizer && (
+        <div>
+          {!isStreamActive ? (
+            <button onClick={startStream}>Start Stream</button>
+          ) : (
+            <>
+              <button onClick={toggleMic}>{isMicMuted ? "Unmute Mic" : "Mute Mic"}</button>
+              <button onClick={toggleCamera}>{isCameraDisabled ? "Enable Camera" : "Disable Camera"}</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default LiveStream;
+export default LiveStreamPage;

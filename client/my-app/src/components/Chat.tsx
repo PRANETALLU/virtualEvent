@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { io, Socket } from "socket.io-client";
 import { Box, TextField, Button, Typography, List, ListItem } from "@mui/material";
+import { useUser } from "../context/UserContext";
 
 interface ChatMessage {
   sender: string;
@@ -20,6 +21,7 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const {userInfo} = useUser(); 
 
   // Initialize socket and join event room
   useEffect(() => {
@@ -49,7 +51,7 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
   const handleSendMessage = () => {
     if (newMessage.trim() && socket) {
       const messageData: ChatMessage = {
-        sender: "User", // Replace with actual user info (e.g., from context or props)
+        sender: userInfo?.username || "User", // Replace with actual user info (e.g., from context or props)
         message: newMessage.trim(),
         createdAt: Date.now(),
       };
@@ -67,16 +69,16 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
   return (
     <Box
       sx={{
+        width: 350,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        padding: 2,
-        maxWidth: "500px",
-        borderLeft: "1px solid #eaeaea",
+        justifyContent: "space-between",
+        borderLeft: "1px solid #ccc",
         backgroundColor: "#fff",
       }}
     >
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+      <Typography variant="h6" fontWeight="bold">
         Live Event Chat
       </Typography>
       <Box sx={{ flex: 1, overflowY: "auto", mb: 2 }}>
