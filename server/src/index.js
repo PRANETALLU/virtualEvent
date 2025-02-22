@@ -24,7 +24,7 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     credentials: true,
-    allowedHeaders: "Content-Type",
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -38,95 +38,148 @@ db.once("open", () => console.log("MongoDB connected"));
 app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 
-let activeStreams = {}; // Track active streams by event ID
-let eventAttendees = {}; // Track attendees for each event
-let eventMessages = {}; // Track messages for each event
+
+// Stream tracking with metadata
+const activeStreams = new Map(); // Map eventId to stream info
+const eventParticipants = new Map(); // Map eventId to participants
+
+// Utility function to get room participants
+const getRoomParticipants = (eventId) => {
+  return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };
+};
+
+// Utility function to broadcast to room
+const broadcastToRoom = (eventId, event, data, excludeSocketId = null) => {
+  const room = getRoomParticipants(eventId);
+  const sockets = Array.from(room.viewers);
+  if (room.organizer) sockets.push(room.organizer);
+  
+  sockets.forEach(socketId => {
+    if (socketId !== excludeSocketId) {
+      io.to(socketId).emit(event, data);
+    }
+  });
+};
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
-
+  
   // Handle organizer joining
   socket.on("organizer-joined", ({ peerId, eventId }) => {
     console.log(`Organizer joined: ${peerId} for event ${eventId}`);
-    activeStreams[eventId] = { peerId, isStreamActive: false };
-    eventAttendees[eventId] = { organizer: peerId, attendees: [] };
-    eventMessages[eventId] = []; // Initialize the message history for the event
+    
+    const streamInfo = activeStreams.get(eventId) || {
+      organizerPeerId: peerId,
+      isActive: false,
+      startTime: null
+    };
+    
+    activeStreams.set(eventId, streamInfo);
+    
+    const participants = getRoomParticipants(eventId);
+    participants.organizer = socket.id;
+    eventParticipants.set(eventId, participants);
+    
+    socket.join(eventId);
+    
+    // Send current stream status to organizer
+    socket.emit("stream-status", {
+      active: streamInfo.isActive,
+      organizerPeerId: streamInfo.organizerPeerId
+    });
   });
 
   // Handle viewer joining
   socket.on("viewer-joined", ({ peerId, eventId }) => {
     console.log(`Viewer joined: ${peerId} for event ${eventId}`);
-    if (eventAttendees[eventId]) {
-      eventAttendees[eventId].attendees.push(peerId);
-    } else {
-      eventAttendees[eventId] = { organizer: null, attendees: [peerId] };
-    }
-
-    // Notify viewer if the stream is active
-    if (activeStreams[eventId]?.isStreamActive) {
-      socket.emit("stream-started"); // Notify viewer that stream is active
+    
+    const participants = getRoomParticipants(eventId);
+    participants.viewers.add(socket.id);
+    eventParticipants.set(eventId, participants);
+    
+    socket.join(eventId);
+    
+    // Send current stream status to viewer
+    const streamInfo = activeStreams.get(eventId);
+    if (streamInfo) {
+      socket.emit("stream-status", {
+        active: streamInfo.isActive,
+        organizerPeerId: streamInfo.organizerPeerId
+      });
     }
   });
 
-  // Handle checking stream status
-  socket.on("check-stream-status", ({ eventId }) => {
-    const isStreamActive = activeStreams[eventId]?.isStreamActive;
-    socket.emit("stream-status", isStreamActive);
-  });
-
-  // Start stream
+  // Handle stream start
   socket.on("start-stream", ({ peerId, eventId }) => {
     console.log(`Stream started by organizer: ${peerId} for event ${eventId}`);
-    if (activeStreams[eventId]) {
-      activeStreams[eventId].isStreamActive = true;
-      // Notify all attendees that the stream has started (not the organizer)
-      eventAttendees[eventId].attendees.forEach((attendeePeerId) => {
-        io.to(attendeePeerId).emit("stream-started");
-      });
-    }
+    
+    const streamInfo = {
+      organizerPeerId: peerId,
+      isActive: true,
+      startTime: Date.now()
+    };
+    
+    activeStreams.set(eventId, streamInfo);
+    
+    // Notify all room participants
+    broadcastToRoom(eventId, "stream-started", {
+      organizerPeerId: peerId
+    });
   });
 
-  // Stop stream
+  // Handle stream stop
   socket.on("stop-stream", ({ eventId }) => {
     console.log(`Stream stopped for event ${eventId}`);
-    if (activeStreams[eventId]) {
-      activeStreams[eventId].isStreamActive = false;
-      // Notify all attendees that the stream has stopped (not the organizer)
-      eventAttendees[eventId].attendees.forEach((attendeePeerId) => {
-        io.to(attendeePeerId).emit("stream-stopped");
-      });
+    
+    const streamInfo = activeStreams.get(eventId);
+    if (streamInfo) {
+      streamInfo.isActive = false;
+      streamInfo.startTime = null;
+      activeStreams.set(eventId, streamInfo);
+      
+      // Notify all room participants
+      broadcastToRoom(eventId, "stream-stopped", {});
     }
   });
 
-  // Handle sending a message
-  socket.on("send-message", ({ eventId, message, userId }) => {
-    console.log(`Message received for event ${eventId}: ${message}`);
-    if (eventMessages[eventId]) {
-      // Add the message to the event's message history
-      eventMessages[eventId].push({ userId, message });
-      // Emit the message to all attendees (except the sender)
-      eventAttendees[eventId].attendees.forEach((attendeePeerId) => {
-        if (attendeePeerId !== socket.id) {
-          io.to(attendeePeerId).emit("new-message", { userId, message });
-        }
-      });
-    }
+  // Handle stream status check
+  socket.on("check-stream-status", ({ eventId }) => {
+    const streamInfo = activeStreams.get(eventId);
+    socket.emit("stream-status", {
+      active: streamInfo?.isActive || false,
+      organizerPeerId: streamInfo?.organizerPeerId || null
+    });
   });
 
   // Handle disconnection
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
-
-    // Remove from active streams and attendees list
-    for (const eventId in eventAttendees) {
-      if (eventAttendees[eventId].organizer === socket.id) {
-        delete activeStreams[eventId];
-        delete eventAttendees[eventId];
-        delete eventMessages[eventId];
-      } else {
-        eventAttendees[eventId].attendees = eventAttendees[eventId].attendees.filter(id => id !== socket.id);
+    
+    // Clean up all events this socket was participating in
+    eventParticipants.forEach((participants, eventId) => {
+      // If organizer disconnected
+      if (participants.organizer === socket.id) {
+        const streamInfo = activeStreams.get(eventId);
+        if (streamInfo?.isActive) {
+          streamInfo.isActive = false;
+          streamInfo.startTime = null;
+          activeStreams.set(eventId, streamInfo);
+          broadcastToRoom(eventId, "stream-stopped", {});
+        }
+        participants.organizer = null;
       }
-    }
+      
+      // Remove from viewers if present
+      participants.viewers.delete(socket.id);
+      
+      // Clean up empty rooms
+      if (!participants.organizer && participants.viewers.size === 0) {
+        eventParticipants.delete(eventId);
+        activeStreams.delete(eventId);
+      } else {
+        eventParticipants.set(eventId, participants);
+      }
+    });
   });
 });
 

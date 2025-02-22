@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import EventDetails from "./pages/EventDetails";
 import { Header } from "./components/Header";
 import Search from "./pages/Search";
+import LStream from "./pages/LStream";
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: React.FC = () => {
           <Route path="/search" element={<Search />} />
           <Route path="/events/:eventId" element={<EventDetails />} />
           <Route path="/watch/:eventId" element={<LiveStream />} />
+          <Route path="/lStream" element={<LStream />} />
         </Routes>
       </UserContextProvider>
     </BrowserRouter>

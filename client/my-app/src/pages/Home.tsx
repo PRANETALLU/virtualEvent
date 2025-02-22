@@ -141,6 +141,14 @@ const Home: React.FC = () => {
             spacing={2}
           >
             <Button
+              onClick={() => navigate("/lStream")}
+              color="primary"
+              variant="contained"
+              sx={{ minWidth: '100px' }}
+            >
+              LStream
+            </Button>
+            <Button
               variant="contained"
               color="primary"
               onClick={() => setOpen(true)}

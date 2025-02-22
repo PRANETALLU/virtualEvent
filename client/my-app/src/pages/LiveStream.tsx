@@ -14,6 +14,7 @@ const LiveStream = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [peerId, setPeerId] = useState<string | null>(null);
+  const [organizerPeerId, setOrganizerPeerId] = useState<string | null>(null);
   const [isStreamActive, setIsStreamActive] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isCameraDisabled, setIsCameraDisabled] = useState(false);
@@ -25,14 +26,13 @@ const LiveStream = () => {
   const [newMessage, setNewMessage] = useState<string>("");
   const navigate = useNavigate();
 
+  // Fetch event details
   useEffect(() => {
     if (!eventId) {
       setError("Event ID is required");
-      console.log("Event ID is missing");
       return;
     }
 
-    console.log(`Fetching event details for eventId: ${eventId}`);
     axios
       .get(`${SOCKET_URL}/events/${eventId}`)
       .then((response) => {
@@ -47,6 +47,7 @@ const LiveStream = () => {
 
   const isOrganizer = event?.organizer?._id === userInfo?.id;
 
+  // Socket connection setup
   useEffect(() => {
     const socketInstance = io(SOCKET_URL, {
       transports: ["websocket"],
@@ -59,26 +60,20 @@ const LiveStream = () => {
       setError("Failed to connect to server");
     });
 
-    socketInstance.on("stream-started", () => {
+    socketInstance.on("stream-started", (data: { organizerPeerId: string }) => {
       setIsStreamActive(true);
-      console.log("Stream started");
+      setOrganizerPeerId(data.organizerPeerId);
+      console.log("Stream started with organizer peer ID:", data.organizerPeerId);
     });
 
     socketInstance.on("stream-stopped", () => {
-      setIsStreamActive(false);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        console.log("Stream stopped and tracks closed");
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-        console.log("Video element cleared");
-      }
+      handleStreamStop();
     });
 
-    socketInstance.on("stream-status", (status: boolean) => {
-      setIsStreamActive(status);
-      console.log("Stream status updated:", status);
+    socketInstance.on("stream-status", (data: { active: boolean; organizerPeerId: string | null }) => {
+      setIsStreamActive(data.active);
+      setOrganizerPeerId(data.organizerPeerId);
+      console.log("Stream status updated:", data);
     });
 
     socketInstance.on("new-message", (message: string) => {
@@ -92,6 +87,7 @@ const LiveStream = () => {
     };
   }, []);
 
+  // Peer connection setup
   useEffect(() => {
     if (!socket) return;
 
@@ -122,47 +118,100 @@ const LiveStream = () => {
       socket.emit("check-stream-status", { eventId });
     });
 
+    if (!isOrganizer) {
+      // Viewer peer handling
+      peer.on("call", async (call) => {
+        console.log("Receiving call from organizer");
+        call.answer(); // Answer without sending stream back
+
+        call.on("stream", (remoteStream) => {
+          console.log("Received remote stream");
+          if (videoRef.current) {
+            videoRef.current.srcObject = remoteStream;
+            videoRef.current.play().catch(err => {
+              console.error("Error playing remote stream:", err);
+              videoRef.current!.controls = true;
+            });
+          }
+        });
+
+        call.on("error", (error) => {
+          console.error("Call error:", error);
+          setError("Error receiving stream");
+        });
+      });
+    }
+
     peer.on("error", (error) => {
       console.error("Peer connection error:", error);
       setError("Failed to establish peer connection");
     });
 
     return () => {
-      if (peerRef.current) {
-        peerRef.current.destroy();
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      cleanupStream();
     };
   }, [socket, isOrganizer, eventId]);
 
-  const handleStartStream = async () => {
-    if (!isOrganizer || !socket || !peerRef.current) return;
+  // Viewer connection to organizer stream
+  useEffect(() => {
+    if (!isOrganizer && isStreamActive && organizerPeerId && peerRef.current) {
+      connectToOrganizerStream();
+    }
+  }, [isStreamActive, organizerPeerId, isOrganizer]);
+
+  const connectToOrganizerStream = async () => {
+    if (!organizerPeerId || !peerRef.current) return;
 
     try {
-      console.log("Requesting media stream...");
+      console.log("Connecting to organizer peer:", organizerPeerId);
+      const call = peerRef.current.call(organizerPeerId, new MediaStream());
+
+      call.on("stream", (remoteStream) => {
+        console.log("Received organizer's stream");
+        if (videoRef.current) {
+          videoRef.current.srcObject = remoteStream;
+          videoRef.current.play().catch(err => {
+            console.error("Error playing remote stream:", err);
+            videoRef.current!.controls = true;
+          });
+        }
+      });
+
+      call.on("error", (error) => {
+        console.error("Call error:", error);
+        setError("Failed to connect to organizer's stream");
+      });
+    } catch (err) {
+      console.error("Error connecting to organizer:", err);
+      setError("Failed to connect to stream");
+    }
+  };
+
+  const handleStartStream = async () => {
+    if (!isOrganizer || !socket || !peerRef.current) return;
+    console.log("Peer ID before starting stream:", peerId);
+
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
 
-      console.log("Media stream acquired:", stream.id);
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        try {
-          await videoRef.current.play();
-          console.log("Local preview started");
-        } catch (err) {
+        await videoRef.current.play().catch(err => {
           console.error("Local preview failed:", err);
-          videoRef.current.controls = true;
-        }
+          videoRef.current!.controls = true;
+        });
       }
+
+      // Set up peer call handling for organizer
+      peerRef.current.on("call", (call) => {
+        console.log("Answering call from viewer:", call.peer);
+        call.answer(stream);
+      });
 
       socket.emit("start-stream", { peerId, eventId });
       setIsStreamActive(true);
@@ -173,22 +222,32 @@ const LiveStream = () => {
     }
   };
 
+  const handleStreamStop = () => {
+    setIsStreamActive(false);
+    setOrganizerPeerId(null);
+    cleanupStream();
+  };
+
+  const cleanupStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    if (peerRef.current) {
+      peerRef.current.destroy();
+    }
+  };
+
   const handleStopStream = async () => {
     try {
-      console.log("Stopping stream...");
       if (socket) {
         socket.emit("stop-stream", { eventId });
       }
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-
-      setIsStreamActive(false);
+      handleStreamStop();
 
       await axios.post(
         `${SOCKET_URL}/events/${eventId}/livestream/stop`,
@@ -224,13 +283,13 @@ const LiveStream = () => {
   };
 
   const handleSendMessage = () => {
-    if (newMessage.trim()) {
+    if (newMessage.trim() && socket) {
       const messageData = {
         eventId,
         message: newMessage,
         sender: userInfo?.username,
       };
-      socket?.emit("send-message", messageData);
+      socket.emit("send-message", messageData);
       setChatMessages((prevMessages) => [...prevMessages, `${userInfo?.username}: ${newMessage}`]);
       setNewMessage("");
     }
@@ -281,7 +340,7 @@ const LiveStream = () => {
               display: "flex",
               flexDirection: "column",
               padding: 3,
-              minWidth: 0 // Prevent flex item from overflowing
+              minWidth: 0
             }}
           >
             <Box
@@ -364,16 +423,6 @@ const LiveStream = () => {
                   </Button>
                 </>
               )}
-
-              {!isOrganizer && isStreamActive && (
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleStopStream}
-                >
-                  Stop Watching
-                </Button>
-              )}
             </Box>
           </Box>
 
@@ -450,7 +499,7 @@ const LiveStream = () => {
         </Paper>
       </Box>
     </Box>
-  );
+  ); 
 };
 
 export default LiveStream;
