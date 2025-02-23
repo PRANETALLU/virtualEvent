@@ -1,41 +1,41 @@
 import React from "react";
+import { useUser } from "../context/UserContext";
 
 const Profile: React.FC = () => {
-  // Hardcoded user information
-  const user = {
-    name: "Pranet Allu",
-    email: "Pranet.Allu@gmail.com",
-    bio: "Computer Science student at the University of Florida",
-    avatar: "data:image/png;base64,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",
-    interests: ["Coding", "Reading", "Gaming"]
-  };
+  const { userInfo } = useUser();
+
+  if (!userInfo) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col items-center p-6">
       <div className="w-full flex justify-end">
-       <div className="w-4 h-4">
-            <img
-            src={user.avatar}
+        <div className="w-24 h-24">
+          <img
+            src={userInfo.avatar || "https://via.placeholder.com/150"}
             alt="Profile"
-            className="w-full h-full rounded-full shadow-md object-contain"
-       />
-   </div>
-    </div>
-      <div className="mt-4 text-right">
+            className="w-full h-full rounded-full shadow-md object-cover"
+          />
+        </div>
+      </div>
+      <div className="mt-4 text-center">
         <h2 className="text-xl font-semibold">Name</h2>
-        <h1 className="text-gray-600">{user.name}</h1>
+        <h1 className="text-gray-600">{userInfo.username}</h1>
       </div>
       <div className="mt-2 text-center">
         <h2 className="text-xl font-semibold">Email</h2>
-        <p className="text-gray-600">{user.email}</p>
+        <p className="text-gray-600">{userInfo.email}</p>
       </div>
-      <p className="mt-2 text-center">{user.bio}</p>
+      <p className="mt-2 text-center">{userInfo.bio || "No bio available"}</p>
       <div className="mt-4">
         <h2 className="text-xl font-semibold">Interests</h2>
         <ul className="list-disc list-inside">
-          {user.interests.map((interest, index) => (
-            <li key={index}>{interest}</li>
-          ))}
+          {userInfo.interests && userInfo.interests.length > 0 ? (
+            userInfo.interests.map((interest, index) => <li key={index}>{interest}</li>)
+          ) : (
+            <p>No interests listed</p>
+          )}
         </ul>
       </div>
     </div>

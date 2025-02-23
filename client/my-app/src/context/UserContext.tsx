@@ -1,19 +1,24 @@
 import React, { createContext, useState, useEffect, ReactNode } from "react";
+import axios from "axios";
 
 // Define the User interface with expected properties
 interface User {
   id?: string;
   username?: string;
+  email?: string;
+  bio?: string;
+  avatar?: string;
+  interests?: string[];
   token?: string;
 }
 
-// Define the context type with proper typing
+// Define the context type
 interface UserContextType {
   userInfo: User | null;
   setUserInfo: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
-// Create the context with an initial undefined value
+// Create the context
 export const UserContext = createContext<UserContextType | undefined>(undefined);
 
 interface UserContextProviderProps {
@@ -21,13 +26,28 @@ interface UserContextProviderProps {
 }
 
 const UserContextProvider = ({ children }: UserContextProviderProps) => {
-  // Retrieve userInfo from localStorage
   const storedUser = localStorage.getItem("userInfo");
   const [userInfo, setUserInfo] = useState<User | null>(
     storedUser ? JSON.parse(storedUser) : null
   );
 
-  // Update localStorage whenever userInfo changes
+  // Fetch user details when userInfo updates (useful for fresh login)
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (userInfo?.token) {
+        try {
+          const { data } = await axios.get("http://localhost:5000/user/profile", {
+            headers: { Authorization: `Bearer ${userInfo.token}` },
+          });
+          setUserInfo((prev) => ({ ...prev, ...data }));
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      }
+    };
+    fetchUserData();
+  }, [userInfo?.token]);
+
   useEffect(() => {
     if (userInfo) {
       localStorage.setItem("userInfo", JSON.stringify(userInfo));
@@ -45,7 +65,7 @@ const UserContextProvider = ({ children }: UserContextProviderProps) => {
 
 export const useUser = () => {
   const context = React.useContext(UserContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useUser must be used within a UserContextProvider");
   }
   return context;
