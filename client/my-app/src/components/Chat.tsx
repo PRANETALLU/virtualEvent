@@ -78,7 +78,7 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
         backgroundColor: "#fff",
       }}
     >
-      <Typography variant="h6" fontWeight="bold">
+      <Typography variant="h6" fontWeight="bold" sx={{paddingLeft: 2, paddingTop: 2}}>
         Live Event Chat
       </Typography>
       <Box sx={{ flex: 1, overflowY: "auto", mb: 2 }}>
