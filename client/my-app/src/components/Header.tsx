@@ -27,7 +27,12 @@ export const Header: React.FC = () => {
                     </Link>
                 </Box>
                 {userInfo && (
-                    <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
+                    <>
+                        <Link to="/profile" style={{ textDecoration: 'none', marginRight: '10px' }}>
+                            <Button variant="contained" color="primary">Profile</Button>
+                        </Link>
+                        <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
+                    </>
                 )}
             </Toolbar>
         </AppBar>
