@@ -4,6 +4,7 @@ const mongooseExpress = require("mongoose");
 const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const paymentRoutes = require("./controllers/paymentRouting");
 const socketIo = require("socket.io");
 const http = require("http");
 require("dotenv").config();
@@ -17,7 +18,6 @@ const io = socketIo(server, {
     credentials: true,
   },
 });
-
 app.use(express.json());
 // const express = require('express');
 // const bodyParser = require('body-parser');
@@ -27,7 +27,6 @@ app.use(express.json());
 // app.use('/api/payments', paymentRoutes);
 // const PORT = process.env.PORT || 5000;
 // app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
 app.use(cookieParser());
 app.use(
   cors({
@@ -36,23 +35,19 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
 const mongoURI = process.env.MONGO_URI;
 mongooseExpress.connect(mongoURI);
-
 const db = mongooseExpress.connection;
 db.on("error", (error) => console.error("MongoDB connection error:", error));
 db.once("open", () => console.log("MongoDB connected"));
-
 app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
-
+app.use("/api/payments", paymentRoutes);
 // Stream tracking and chat storage
 // const activeStreams = new Map(); 
 // const eventParticipants = new Map(); 
 const eventMessages = {}; 
 const events = {};
-
 /*const getRoomParticipants = (eventId) => {
   return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };
 };

@@ -2,7 +2,6 @@ import { AppBar, Toolbar, Button, Box } from "@mui/material";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
-
 export const Header: React.FC = () => {
     const { userInfo, setUserInfo } = useUser();
     const navigate = useNavigate();
@@ -17,7 +16,6 @@ export const Header: React.FC = () => {
             console.error("Logout error", error);
         }
     };
-
     return (
         <AppBar position="fixed" color="default">
             <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -30,6 +28,9 @@ export const Header: React.FC = () => {
                     <>
                         <Link to="/profile" style={{ textDecoration: 'none', marginRight: '10px' }}>
                             <Button variant="contained" color="primary">Profile</Button>
+                        </Link>
+                        <Link to="/payments" style={{ textDecoration: 'none', marginRight: '10px' }}>
+                            <Button variant="contained" color="primary">Payments</Button>
                         </Link>
                         <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
                     </>
