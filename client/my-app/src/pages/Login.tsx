@@ -12,6 +12,7 @@ const Login = () => {
   const { setUserInfo } = useUser();
 
   const handleLogin = async () => {
+<<<<<<< Updated upstream
     try {
       const { data } = await axios.post('http://localhost:5000/user/login', {
         username,
@@ -19,6 +20,50 @@ const Login = () => {
       });
       setUserInfo(data); 
       navigate('/home');
+=======
+    setLoading(true);
+    setError("");
+
+    try {
+      // 1️⃣ Authenticate user and get token
+      const { data } = await axios.post(
+        "http://localhost:5000/user/login",
+        { username, password },
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const { token, id } = data;
+
+      // 2️⃣ Fetch full user profile using the token
+      const profileResponse = await axios.get("http://localhost:5000/user/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const userProfile = profileResponse.data;
+
+      // 3️⃣ Store user details in Context and Local Storage
+      const userInfo = { 
+        id, 
+        username: userProfile.username, 
+        email: userProfile.email, 
+        avatar: userProfile.avatar, 
+        bio: userProfile.bio, 
+        interests: userProfile.interests, 
+        token 
+      };
+
+      setUserInfo(userInfo);
+      localStorage.setItem("userInfo", JSON.stringify(userInfo));
+
+      // 4️⃣ Navigate to Home Page
+      navigate("/home");
+
+>>>>>>> Stashed changes
     } catch (error) {
       console.error('Login error', error);
     }
