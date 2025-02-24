@@ -22,7 +22,8 @@
     "mediasoup": "^3.15.3",
     "mongoose": "^8.5.2",
     "server": "file:",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "stripe": "^17.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

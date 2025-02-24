@@ -46,7 +46,7 @@ app.use("/api/payments", paymentRoutes);
 // Stream tracking and chat storage
 // const activeStreams = new Map(); 
 // const eventParticipants = new Map(); 
-const eventMessages = {}; 
+const eventMessages = {};
 const events = {};
 /*const getRoomParticipants = (eventId) => {
   return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };

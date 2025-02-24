@@ -32,7 +32,7 @@ const UserContextProvider = ({ children }: UserContextProviderProps) => {
   );
 
   // Fetch user details when userInfo updates (useful for fresh login)
-  useEffect(() => {
+  /*useEffect(() => {
     const fetchUserData = async () => {
       if (userInfo?.token) {
         try {
@@ -46,7 +46,7 @@ const UserContextProvider = ({ children }: UserContextProviderProps) => {
       }
     };
     fetchUserData();
-  }, [userInfo?.token]);
+  }, [userInfo?.token]);*/
 
   useEffect(() => {
     if (userInfo) {
