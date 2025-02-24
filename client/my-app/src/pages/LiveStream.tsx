@@ -42,10 +42,12 @@ const LiveStream: React.FC = () => {
   useEffect(() => {
     if (!event) return;
 
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(SOCKET_URL, {
+      transports: ['websocket'],
+    });
     setSocket(newSocket);
 
-    const newPeer = new Peer();
+    const newPeer = new Peer({ host: 'localhost', port: 5000, path: '/peerjs' });
     peerRef.current = newPeer;
 
     newPeer.on("open", (id) => {

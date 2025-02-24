@@ -7,26 +7,28 @@ const eventRoutes = require("./routes/eventRoutes");
 const paymentRoutes = require("./controllers/paymentRouting");
 const socketIo = require("socket.io");
 const http = require("http");
+const Peer = require('peer');
 require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
 
+const peerServer = new Peer.ExpressPeerServer(server, {
+  debug: true
+});
+
+// Initialize Socket.IO with WebSocket support and custom configuration
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // Frontend URL
     credentials: true,
   },
+  transports: ['websocket'], // Explicitly set transport methods
+  pingTimeout: 60000, // Adjust ping timeout for slow connections
+  pingInterval: 25000, // Adjust ping interval for WebSocket health
 });
+
 app.use(express.json());
-// const express = require('express');
-// const bodyParser = require('body-parser');
-// const paymentRoutes = require('./routes/paymentRoutes');
-// require('dotenv').config();
-// app.use(bodyParser.json());
-// app.use('/api/payments', paymentRoutes);
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 app.use(cookieParser());
 app.use(
   cors({
@@ -35,6 +37,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.use('/peerjs', peerServer);
 const mongoURI = process.env.MONGO_URI;
 mongooseExpress.connect(mongoURI);
 const db = mongooseExpress.connection;
@@ -43,11 +46,45 @@ db.once("open", () => console.log("MongoDB connected"));
 app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 app.use("/api/payments", paymentRoutes);
+const eventMessages = {};
+const events = {};
+
+
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.on("organizer-ready", ({ eventId, peerId }) => {
+    events[eventId] = peerId;
+    socket.broadcast.emit("organizer-ready", { peerId });
+  });
+
+  socket.on("join-event", (eventId) => {
+    console.log(`Socket ${socket.id} joined event ${eventId}`);
+    socket.join(eventId);
+
+    if (eventMessages[eventId]) {
+      socket.emit("previous-messages", eventMessages[eventId]);
+    }
+  });
+
+  socket.on("send-message", (data) => {
+    const { eventId, message } = data;
+    if (!eventMessages[eventId]) {
+      eventMessages[eventId] = [];
+    }
+    eventMessages[eventId].push(message);
+    io.to(eventId).emit("new-message", message);
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
 // Stream tracking and chat storage
 // const activeStreams = new Map(); 
 // const eventParticipants = new Map(); 
-const eventMessages = {};
-const events = {};
+
 /*const getRoomParticipants = (eventId) => {
   return eventParticipants.get(eventId) || { organizer: null, viewers: new Set() };
 };
@@ -63,15 +100,10 @@ const broadcastToRoom = (eventId, eventName, data, excludeSocketId = null) => {
   });
 };*/
 
-io.on("connection", (socket) => {
+/*io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on("organizer-ready", ({ eventId, peerId }) => {
-    events[eventId] = peerId;
-    socket.broadcast.emit("organizer-ready", { peerId });
-  });
-
-  /*socket.on("organizer-joined", ({ peerId, eventId }) => {
+  socket.on("organizer-joined", ({ peerId, eventId }) => {
     console.log(`Organizer joined: ${peerId} for event ${eventId}`);
 
     const streamInfo = activeStreams.get(eventId) || {
@@ -146,7 +178,7 @@ io.on("connection", (socket) => {
       active: streamInfo?.isActive || false,
       organizerPeerId: streamInfo?.organizerPeerId || null
     });
-  });*/
+  });
 
   // Chat: client joins an event room
   socket.on("join-event", (eventId) => {
@@ -172,7 +204,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
 
-    /*eventParticipants.forEach((participants, eventId) => {
+    eventParticipants.forEach((participants, eventId) => {
       // If organizer disconnected
       if (participants.organizer === socket.id) {
         const streamInfo = activeStreams.get(eventId);
@@ -193,9 +225,9 @@ io.on("connection", (socket) => {
       } else {
         eventParticipants.set(eventId, participants);
       }
-    });*/
+    });
   });
-});
+});*/
 
 server.listen(5000, () => {
   console.log("Server running on port 5000");
