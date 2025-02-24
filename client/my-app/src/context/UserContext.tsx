@@ -6,9 +6,6 @@ interface User {
   id?: string;
   username?: string;
   email?: string;
-  bio?: string;
-  avatar?: string;
-  interests?: string[];
   token?: string;
 }
 

@@ -29,23 +29,11 @@ const Login = () => {
         }
       );
 
-      const { token, id } = data;
-
-      // 2️⃣ Fetch full user profile using the token
-      const profileResponse = await axios.get("http://localhost:5000/user/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const userProfile = profileResponse.data;
-
-      // 3️⃣ Store user details in Context and Local Storage
-      const userInfo = { id, username: userProfile.username, email: userProfile.email, avatar: userProfile.avatar, bio: userProfile.bio, interests: userProfile.interests, token };
+      const userInfo = { id: data.id, username: data.username, email: data.email, token: data.token };
 
       setUserInfo(userInfo);
       localStorage.setItem("userInfo", JSON.stringify(userInfo));
 
-      // 4️⃣ Navigate to Profile Page
-      navigate("/profile");
 
     } catch (error) {
       setError("Invalid username or password");
