@@ -136,7 +136,7 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
 
         {isAttending && !isOrganizer && !ended && (
           <Button variant="contained" disabled>
-            Already Joined
+            Attending
           </Button>
         )}
       </CardContent>
