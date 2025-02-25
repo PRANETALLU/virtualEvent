@@ -33,7 +33,7 @@ const Login = () => {
 
       setUserInfo(userInfo);
       localStorage.setItem("userInfo", JSON.stringify(userInfo));
-
+      navigate("/home")
 
     } catch (error) {
       setError("Invalid username or password");
