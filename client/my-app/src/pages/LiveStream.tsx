@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { useParams } from "react-router-dom";
+import Chat from "../components/Chat";
+import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material"; 
 
 const LiveStream = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -337,108 +339,67 @@ const LiveStream = () => {
   };
 
   return (
-    <div style={{padding: "20px", maxWidth: "1200px", margin: "0 auto", paddingTop: 100}}>
-      <h2>{isOrganizer ? "Event Live Stream - Organizer View" : "Event Live Stream - Attendee View"}</h2>
-      
-      {/* Connection status indicator */}
-      <div style={{marginBottom: "10px"}}>
-        <span style={{
-          display: "inline-block",
-          width: "12px",
-          height: "12px",
-          borderRadius: "50%",
-          backgroundColor: connected ? "green" : "red",
-          marginRight: "8px"
-        }}></span>
-        {connected ? "Connected to server" : "Disconnected from server"}
-      </div>
-      
-      <div style={{display: "flex", gap: "20px", flexWrap: "wrap"}}>
-        {/* Organizer controls */}
+    <Box sx={{ p: 3, maxWidth: "1200px", mx: "auto", pt: 12 }}>
+      <Typography variant="h4" gutterBottom>
+        {isOrganizer ? "Event Live Stream - Organizer View" : "Event Live Stream - Attendee View"}
+      </Typography>
+
+      <Box display="flex" alignItems="center" gap={1} mb={2}>
+        <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: connected ? "green" : "red" }} />
+        <Typography>{connected ? "Connected to server" : "Disconnected from server"}</Typography>
+      </Box>
+
+      <Box display="flex" gap={3} flexWrap="wrap">
+        {/* Organizer Controls */}
         {isOrganizer && (
-          <div style={{
-            flex: "1",
-            minWidth: "300px",
-            padding: "15px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            backgroundColor: "#f9f9f9"
-          }}>
-            <h3>Broadcast Controls</h3>
-            <button 
-              onClick={isStreaming ? stopStreaming : startStreaming}
-              style={{
-                padding: "10px 15px",
-                fontSize: "16px",
-                backgroundColor: isStreaming ? "#e74c3c" : "#2ecc71",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
-            >
-              {isStreaming ? "Stop Streaming" : "Start Streaming"}
-            </button>
-            
-            <div style={{marginTop: "15px"}}>
-              <h4>Preview</h4>
-              <video 
-                ref={localVideoRef} 
-                autoPlay 
-                muted 
-                playsInline 
-                style={{
-                  width: "100%",
-                  backgroundColor: "#000",
-                  borderRadius: "4px",
-                  display: "block"
-                }} 
-              />
-            </div>
-          </div>
+          <Card sx={{ flex: 1, minWidth: 300, p: 2, backgroundColor: "#f9f9f9" }}>
+            <CardContent>
+              <Typography variant="h6">Broadcast Controls</Typography>
+              <Button 
+                onClick={isStreaming ? stopStreaming : startStreaming}
+                variant="contained"
+                color={isStreaming ? "error" : "success"}
+                sx={{ mt: 2 }}
+              >
+                {isStreaming ? "Stop Streaming" : "Start Streaming"}
+              </Button>
+              <Typography variant="subtitle1" mt={2}>Preview</Typography>
+              <Box component="video" ref={localVideoRef} autoPlay muted playsInline sx={{ width: "100%", bgcolor: "black", borderRadius: 1, mt: 1 }} />
+            </CardContent>
+          </Card>
         )}
-        
-        {/* Stream view (for both organizer and attendee) */}
-        {!isOrganizer && (<div style={{
-          flex: "2",
-          minWidth: "400px",
-          padding: "15px",
-          border: "1px solid #ddd",
-          borderRadius: "8px"
-        }}>
-          <h3>Live Stream</h3>
-          
-           <video 
-            ref={remoteVideoRef} 
-            autoPlay 
-            playsInline 
-            controls
-            style={{
-              width: "100%",
-              backgroundColor: "#000",
-              borderRadius: "4px",
-              display: isOrganizer ? "none" : "block",
-              minHeight: "300px"
-            }} 
-          />
-          
-          {!isStreaming && (
-            <div style={{
-              textAlign: "center",
-              padding: "40px",
-              backgroundColor: "#f0f0f0",
-              borderRadius: "4px"
-            }}>
-              <p>Waiting for the organizer to start the stream...</p>
-            </div>
-          )}
-          
-          {streamingError && (
-            <p style={{ color: "red", marginTop: "10px" }}>{streamingError}</p>
-          )}
-        </div>)}
-      </div>
-    </div>
+
+        {/* Stream View */}
+        {!isOrganizer && (<Card sx={{ flex: 2, minWidth: 400, p: 2 }}>
+          <CardContent>
+            <Typography variant="h6">Live Stream</Typography>
+            <Box
+              component="video"
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              controls
+              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, display: isOrganizer ? "none" : "block", minHeight: 300 }}
+            />
+            {!isStreaming && (
+              <Box textAlign="center" py={5} bgcolor="#f0f0f0" borderRadius={1}>
+                <Typography>Waiting for the organizer to start the stream...</Typography>
+              </Box>
+            )}
+            {streamingError && <Typography color="error" mt={1}>{streamingError}</Typography>}
+          </CardContent>
+        </Card>)}
+
+        {/* Chat Component */}
+        {eventId && (
+          <Card sx={{ flex: 1, minWidth: 300, p: 2 }}>
+            <CardContent>
+              <Chat eventId={eventId} />
+            </CardContent>
+          </Card>
+        )}
+      </Box>
+    </Box>
   );
 };
 
