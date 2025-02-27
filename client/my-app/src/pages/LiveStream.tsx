@@ -3,19 +3,20 @@ import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { useParams } from "react-router-dom";
 import Chat from "../components/Chat";
-import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material"; 
+import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
 
 const LiveStream = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const { eventId } = useParams<{ eventId: string }>();
   const [event, setEvent] = useState(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingError, setStreamingError] = useState("");
   const { userInfo } = useUser();
+  const clientIdRef = useRef<string>(`client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
 
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -29,10 +30,11 @@ const LiveStream = () => {
       setConnected(true);
       // Join room with eventId for better message routing
       if (eventId) {
-        socket.send(JSON.stringify({ 
-          type: "join-room", 
-          eventId, 
-          role: isOrganizer ? "organizer" : "attendee" 
+        socket.send(JSON.stringify({
+          type: "join-room",
+          eventId,
+          role: isOrganizer ? "organizer" : "attendee",
+          clientId: clientIdRef.current
         }));
       }
     };
@@ -80,40 +82,66 @@ const LiveStream = () => {
       try {
         const data = JSON.parse(message.data);
         console.log("WebSocket message received:", data.type);
-        
+
         if (!data.eventId || data.eventId !== eventId) return;
 
         switch (data.type) {
+          case "room-joined":
+            console.log("Room joined with status:", data);
+            // If stream is active when joining, update UI
+            if (data.streamActive && !isOrganizer) {
+              setIsStreaming(true);
+            }
+            break;
+          case "new-attendee":
+            console.log("New attendee joined, sending fresh offer");
+            if (isOrganizer && isStreaming && localStreamRef.current) {
+              await regenerateOffer();
+            }
+            break;
           case "offer":
             console.log("Received offer as attendee:", !isOrganizer);
-            if (!isOrganizer) await handleReceiveOffer(data.offer);
+            if (!isOrganizer) await handleReceiveOffer(data.offer, data.connectionId);
             break;
           case "answer":
             console.log("Received answer as organizer:", isOrganizer);
-            if (isOrganizer && peerConnectionRef.current) {
-              try {
-                await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-                console.log("Remote description set successfully");
-              } catch (err) {
-                console.error("Error setting remote description:", err);
+            if (isOrganizer) {
+              const connectionId = data.connectionId || 'default';
+              const peerConnection = peerConnectionsRef.current.get(connectionId);
+
+              if (peerConnection) {
+                try {
+                  await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                  console.log(`Remote description set successfully for connection: ${connectionId}`);
+                } catch (err) {
+                  console.error(`Error setting remote description for connection ${connectionId}:`, err);
+                }
+              } else {
+                console.error(`Peer connection not found for: ${connectionId}`);
               }
             }
             break;
           case "ice-candidate":
             console.log("Received ICE candidate");
-            if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
+            const connectionId = data.connectionId || 'default';
+            const peerConnection = peerConnectionsRef.current.get(connectionId);
+
+            if (peerConnection && peerConnection.remoteDescription) {
               try {
-                await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-                console.log("ICE candidate added successfully");
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                console.log(`ICE candidate added successfully for connection: ${connectionId}`);
               } catch (err) {
-                console.error("Error adding ICE candidate:", err);
+                console.error(`Error adding ICE candidate for connection ${connectionId}:`, err);
               }
             } else {
-              console.log("Skipping ICE candidate - connection not ready");
+              console.log(`Skipping ICE candidate - connection ${connectionId} not ready`);
             }
             break;
           case "stream-started":
             console.log("Stream started notification received");
+            if (!isOrganizer) {
+              setIsStreaming(true);
+            }
             break;
           case "stream-stopped":
             console.log("Stream stopped notification received");
@@ -123,6 +151,12 @@ const LiveStream = () => {
               }
               setIsStreaming(false);
             }
+            // Clean up all peer connections for both organizer and attendee
+            for (const [id, connection] of peerConnectionsRef.current.entries()) {
+              console.log(`Closing connection: ${id}`);
+              connection.close();
+            }
+            peerConnectionsRef.current.clear();
             break;
           default:
             console.log("Unknown message type:", data.type);
@@ -136,15 +170,15 @@ const LiveStream = () => {
     return () => {
       ws.onmessage = null;
     };
-  }, [ws, eventId, isOrganizer, connected]);
+  }, [ws, eventId, isOrganizer, connected, isStreaming]);
 
-  const initPeerConnection = () => {
-    // Close any existing connection
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
+  const initPeerConnection = (connectionId = 'default') => {
+    // Close existing connection with this ID if it exists
+    if (peerConnectionsRef.current.has(connectionId)) {
+      peerConnectionsRef.current.get(connectionId)?.close();
     }
 
-    console.log("Initializing new peer connection");
+    console.log(`Initializing new peer connection: ${connectionId}`);
     const configuration = {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -161,31 +195,38 @@ const LiveStream = () => {
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate && ws?.readyState === WebSocket.OPEN) {
-        console.log("Sending ICE candidate");
-        ws.send(JSON.stringify({ 
-          type: "ice-candidate", 
-          eventId, 
+        console.log(`Sending ICE candidate for connection: ${connectionId}`);
+        ws.send(JSON.stringify({
+          type: "ice-candidate",
+          eventId,
           candidate: event.candidate,
-          role: isOrganizer ? "organizer" : "attendee"
+          role: isOrganizer ? "organizer" : "attendee",
+          connectionId
         }));
       }
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-      console.log("ICE connection state:", peerConnection.iceConnectionState);
+      console.log(`ICE connection state for ${connectionId}:`, peerConnection.iceConnectionState);
     };
 
     peerConnection.onconnectionstatechange = () => {
-      console.log("Connection state:", peerConnection.connectionState);
+      console.log(`Connection state for ${connectionId}:`, peerConnection.connectionState);
+
+      // Clean up failed or closed connections
+      if (peerConnection.connectionState === "failed" ||
+        peerConnection.connectionState === "closed") {
+        peerConnectionsRef.current.delete(connectionId);
+      }
     };
 
     peerConnection.onsignalingstatechange = () => {
-      console.log("Signaling state:", peerConnection.signalingState);
+      console.log(`Signaling state for ${connectionId}:`, peerConnection.signalingState);
     };
 
     // This is critical for attendees to receive video
     peerConnection.ontrack = (event) => {
-      console.log("ontrack event triggered!", event.streams);
+      console.log(`ontrack event triggered for ${connectionId}!`, event.streams);
       if (remoteVideoRef.current && event.streams && event.streams[0]) {
         console.log("Setting remote video stream");
         remoteVideoRef.current.srcObject = event.streams[0];
@@ -195,8 +236,47 @@ const LiveStream = () => {
       }
     };
 
-    peerConnectionRef.current = peerConnection;
+    peerConnectionsRef.current.set(connectionId, peerConnection);
     return peerConnection;
+  };
+
+  const regenerateOffer = async () => {
+    if (!isOrganizer || !localStreamRef.current || !ws) return;
+
+    try {
+      const connectionId = `attendee-${Date.now()}`;
+      const peerConnection = initPeerConnection(connectionId);
+
+      // Add tracks from the existing stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current as MediaStream);
+        });
+      }
+
+      const offer = await peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
+
+      await peerConnection.setLocalDescription(offer);
+
+      // Wait a moment for ICE gathering
+      setTimeout(() => {
+        if (ws?.readyState === WebSocket.OPEN) {
+          console.log("Sending fresh offer for new attendee");
+          ws.send(JSON.stringify({
+            type: "offer",
+            eventId,
+            offer: peerConnection.localDescription,
+            role: "organizer",
+            connectionId
+          }));
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("Error regenerating offer:", error);
+    }
   };
 
   const startStreaming = async () => {
@@ -208,13 +288,13 @@ const LiveStream = () => {
     try {
       setStreamingError("");
       console.log("Requesting media stream");
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
       });
 
       console.log("Media stream obtained:", stream.getTracks().length, "tracks");
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
         localVideoRef.current.play().catch(err => {
@@ -224,8 +304,10 @@ const LiveStream = () => {
 
       localStreamRef.current = stream;
 
-      const peerConnection = initPeerConnection();
-      
+      // Use default connection for initial streaming
+      const connectionId = 'default';
+      const peerConnection = initPeerConnection(connectionId);
+
       // Add tracks to the peer connection (critical for streaming)
       stream.getTracks().forEach((track) => {
         console.log(`Adding ${track.kind} track to peer connection`);
@@ -237,7 +319,7 @@ const LiveStream = () => {
         offerToReceiveAudio: true,
         offerToReceiveVideo: true
       });
-      
+
       console.log("Setting local description");
       await peerConnection.setLocalDescription(offer);
 
@@ -245,19 +327,20 @@ const LiveStream = () => {
       setTimeout(() => {
         if (ws?.readyState === WebSocket.OPEN) {
           console.log("Sending offer to attendees");
-          ws.send(JSON.stringify({ 
-            type: "offer", 
-            eventId, 
+          ws.send(JSON.stringify({
+            type: "offer",
+            eventId,
             offer: peerConnection.localDescription,
-            role: "organizer"
+            role: "organizer",
+            connectionId
           }));
-          
+
           // Notify all clients that stream has started
           ws.send(JSON.stringify({
             type: "stream-started",
             eventId
           }));
-          
+
           setIsStreaming(true);
         }
       }, 1000);
@@ -268,22 +351,22 @@ const LiveStream = () => {
     }
   };
 
-  const handleReceiveOffer = async (offer: RTCSessionDescriptionInit) => {
+  const handleReceiveOffer = async (offer: RTCSessionDescriptionInit, connectionId = 'default') => {
     if (isOrganizer) {
       console.log("Ignoring offer: I am the organizer");
       return;
     }
 
-    console.log("Attendee receiving offer from organizer");
+    console.log(`Attendee receiving offer from organizer with connection ID: ${connectionId}`);
     try {
-      const peerConnection = initPeerConnection();
-      
+      const peerConnection = initPeerConnection(connectionId);
+
       console.log("Setting remote description with offer");
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
       console.log("Creating answer");
       const answer = await peerConnection.createAnswer();
-      
+
       console.log("Setting local description with answer");
       await peerConnection.setLocalDescription(answer);
 
@@ -291,17 +374,18 @@ const LiveStream = () => {
       setTimeout(() => {
         if (ws?.readyState === WebSocket.OPEN) {
           console.log("Sending answer to organizer");
-          ws.send(JSON.stringify({ 
-            type: "answer", 
-            eventId, 
+          ws.send(JSON.stringify({
+            type: "answer",
+            eventId,
             answer: peerConnection.localDescription,
-            role: "attendee"
+            role: "attendee",
+            connectionId
           }));
         }
       }, 1000);
-      
+
       setIsStreaming(true);
-      
+
     } catch (error) {
       console.error("Error handling offer:", error);
       setStreamingError(`Failed to process stream`);
@@ -310,7 +394,7 @@ const LiveStream = () => {
 
   const stopStreaming = () => {
     console.log("Stopping stream");
-    
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         console.log(`Stopping ${track.kind} track`);
@@ -318,68 +402,92 @@ const LiveStream = () => {
       });
       localStreamRef.current = null;
     }
-    
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
+
+    // Close all peer connections
+    for (const [id, connection] of peerConnectionsRef.current.entries()) {
+      console.log(`Closing connection: ${id}`);
+      connection.close();
     }
-    
+    peerConnectionsRef.current.clear();
+
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
-    
+
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: "stream-stopped",
         eventId
       }));
     }
-    
+
     setIsStreaming(false);
   };
 
+
   return (
-    <Box sx={{ p: 3, maxWidth: "1200px", mx: "auto", pt: 12 }}>
-      <Typography variant="h4" gutterBottom>
-        {isOrganizer ? "Event Live Stream - Organizer View" : "Event Live Stream - Attendee View"}
-      </Typography>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: { xs: "column", md: "row" }, // Stack on small screens, side-by-side on medium+
+        justifyContent: "center",
+        alignItems: "stretch", // Align content properly
+        minHeight: "100vh",
+        paddingTop: 10,
+        width: "100%",
+        maxWidth: "1200px",
+        margin: "0 auto",
+        gap: 0, // No gap between video and chat sections
+      }}
+    >
+      {/* Video Section */}
+      <Box
+        sx={{
+          flex: 2, // Video takes more space
+          minWidth: 300,
+          maxWidth: "700px",
+          p: 2,
+          bgcolor: "white",
+          borderRadius: 2,
+          boxShadow: 3,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+          {isOrganizer ? "Broadcast Controls" : "Live Stream"}
+        </Typography>
 
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: connected ? "green" : "red" }} />
-        <Typography>{connected ? "Connected to server" : "Disconnected from server"}</Typography>
-      </Box>
-
-      <Box display="flex" gap={3} flexWrap="wrap">
-        {/* Organizer Controls */}
-        {isOrganizer && (
-          <Card sx={{ flex: 1, minWidth: 300, p: 2, backgroundColor: "#f9f9f9" }}>
-            <CardContent>
-              <Typography variant="h6">Broadcast Controls</Typography>
-              <Button 
-                onClick={isStreaming ? stopStreaming : startStreaming}
-                variant="contained"
-                color={isStreaming ? "error" : "success"}
-                sx={{ mt: 2 }}
-              >
-                {isStreaming ? "Stop Streaming" : "Start Streaming"}
-              </Button>
-              <Typography variant="subtitle1" mt={2}>Preview</Typography>
-              <Box component="video" ref={localVideoRef} autoPlay muted playsInline sx={{ width: "100%", bgcolor: "black", borderRadius: 1, mt: 1 }} />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stream View */}
-        {!isOrganizer && (<Card sx={{ flex: 2, minWidth: 400, p: 2 }}>
-          <CardContent>
-            <Typography variant="h6">Live Stream</Typography>
+        {isOrganizer ? (
+          <>
+            <Button
+              onClick={isStreaming ? stopStreaming : startStreaming}
+              variant="contained"
+              color={isStreaming ? "error" : "success"}
+              sx={{ mt: 2, width: "100%" }}
+            >
+              {isStreaming ? "Stop Streaming" : "Start Streaming"}
+            </Button>
+            <Typography variant="subtitle1" mt={2}>Preview</Typography>
+            <Box
+              component="video"
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, mt: 1 }}
+            />
+          </>
+        ) : (
+          <>
             <Box
               component="video"
               ref={remoteVideoRef}
               autoPlay
               playsInline
               controls
-              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, display: isOrganizer ? "none" : "block", minHeight: 300 }}
+              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, minHeight: 300 }}
             />
             {!isStreaming && (
               <Box textAlign="center" py={5} bgcolor="#f0f0f0" borderRadius={1}>
@@ -387,19 +495,34 @@ const LiveStream = () => {
               </Box>
             )}
             {streamingError && <Typography color="error" mt={1}>{streamingError}</Typography>}
-          </CardContent>
-        </Card>)}
-
-        {/* Chat Component */}
-        {eventId && (
-          <Card sx={{ flex: 1, minWidth: 300, p: 2 }}>
-            <CardContent>
-              <Chat eventId={eventId} />
-            </CardContent>
-          </Card>
+          </>
         )}
       </Box>
+
+      {/* Chat Section */}
+      {eventId && (
+        <Box
+          sx={{
+            flex: 1, // Chat takes the remaining space
+            minWidth: 300,
+            maxWidth: "400px",
+            p: 2,
+            bgcolor: "white",
+            borderRadius: 2,
+            boxShadow: 3,
+            display: "flex",
+            flexDirection: "column",
+            paddingTop: 0, // Ensure no extra padding at the top
+          }}
+        >
+          <Chat eventId={eventId} />
+        </Box>
+      )}
     </Box>
+
+
+
+
   );
 };
 

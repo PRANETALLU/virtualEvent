@@ -1,6 +1,4 @@
-// Chat.tsx
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { io, Socket } from "socket.io-client";
 import { Box, TextField, Button, Typography, List, ListItem } from "@mui/material";
 import { useUser } from "../context/UserContext";
 
@@ -14,48 +12,88 @@ interface ChatProps {
   eventId: string;
 }
 
-const SOCKET_URL = "http://localhost:5000";
+const WS_URL = "ws://localhost:5000/ws";
 
 const Chat: React.FC<ChatProps> = ({ eventId }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
+  const [connected, setConnected] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const {userInfo} = useUser(); 
+  const { userInfo } = useUser();
 
-  // Initialize socket and join event room
   useEffect(() => {
-    const socketInstance = io(SOCKET_URL);
-    setSocket(socketInstance);
+    const ws = new WebSocket(WS_URL);
 
-    socketInstance.emit("join-event", eventId);
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setConnected(true);
+      setSocket(ws);
 
-    socketInstance.on("previous-messages", (prevMessages: ChatMessage[]) => {
-      setMessages(prevMessages);
-    });
+      ws.send(
+        JSON.stringify({
+          type: "join-room",
+          eventId: eventId,
+        })
+      );
+    };
 
-    socketInstance.on("new-message", (message: ChatMessage) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
-    });
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "room-joined") {
+        console.log(`Joined event ${data.eventId}`);
+      } else if (data.type === "chat-message") {
+        // Prevent duplicate message display
+        setMessages((prevMessages) => {
+          if (!prevMessages.some((msg) => msg.createdAt === data.message.createdAt)) {
+            return [...prevMessages, data.message];
+          }
+          return prevMessages;
+        });
+      } else if (data.type === "previous-messages") {
+        setMessages(data.messages);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+      setConnected(false);
+      setSocket(null);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
 
     return () => {
-      socketInstance.disconnect();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, [eventId]);
 
-  // Auto-scroll to the bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && socket) {
+    if (newMessage.trim() && socket && connected) {
       const messageData: ChatMessage = {
-        sender: userInfo?.username || "User", // Replace with actual user info (e.g., from context or props)
+        sender: userInfo?.username || "User",
         message: newMessage.trim(),
         createdAt: Date.now(),
       };
-      socket.emit("send-message", { eventId, message: messageData });
+
+      // Send message to the server
+      socket.send(
+        JSON.stringify({
+          type: "chat-message",
+          eventId: eventId,
+          message: messageData,
+        })
+      );
+
       setNewMessage("");
     }
   };
@@ -67,44 +105,58 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
   };
 
   return (
-    <Box
-      sx={{
-        width: 350,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        borderLeft: "1px solid #ccc",
-        backgroundColor: "#fff",
-      }}
-    >
-      <Typography variant="h6" fontWeight="bold" sx={{paddingLeft: 2, paddingTop: 2}}>
+    <>
+      <Typography variant="h6" fontWeight="bold" sx={{ paddingLeft: 2, paddingTop: 2 }}>
         Live Event Chat
+        {!connected && (
+          <Typography variant="caption" color="error" sx={{ display: "block" }}>
+            Connecting...
+          </Typography>
+        )}
       </Typography>
-      <Box sx={{ flex: 1, overflowY: "auto", mb: 2 }}>
+      <Box sx={{ flex: 1, overflowY: "auto", mb: 2, p: 2 }}>
         <List>
           {messages.map((msg, index) => (
-            <ListItem key={index}>
-              <strong>{msg.sender}: </strong> {msg.message}
+            <ListItem
+              key={index}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                padding: "8px 0",
+              }}
+            >
+              <Typography component="div" sx={{ fontWeight: "bold", fontSize: "0.9rem" }}>
+                {msg.sender}
+              </Typography>
+              <Typography component="div" sx={{ wordBreak: "break-word" }}>
+                {msg.message}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(msg.createdAt).toLocaleTimeString()}
+              </Typography>
             </ListItem>
           ))}
         </List>
         <div ref={messagesEndRef} />
       </Box>
-      <Box sx={{ display: "flex", gap: 2 }}>
+      <Box sx={{ display: "flex", gap: 1, p: 2, pt: 0 }}>
         <TextField
           fullWidth
           variant="outlined"
+          size="small"
           placeholder="Type a message"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={!connected}
         />
-        <Button variant="contained" onClick={handleSendMessage}>
+        <Button variant="contained" onClick={handleSendMessage} disabled={!connected}>
           Send
         </Button>
       </Box>
-    </Box>
+    </>
+
   );
 };
 

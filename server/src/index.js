@@ -24,6 +24,12 @@ const wss = new WebSocket.Server({ noServer: true });
 // Track clients by event and role
 const clients = new Map(); // Map of eventId -> {organizers: Set, attendees: Set}
 
+// Store chat messages by event
+const chatMessages = new Map(); // Map of eventId -> Array of messages
+
+// Track active streams by event
+const activeStreams = new Map(); // Map of eventId -> boolean (is stream active)
+
 // WebSocket Upgrade Handling
 server.on("upgrade", (request, socket, head) => {
   const pathname = url.parse(request.url).pathname;
@@ -71,6 +77,9 @@ wss.on("connection", (ws, req) => {
       // Join room message handling
       if (type === "join-room" && eventId) {
         joinRoom(ws, eventId, role || "attendee");
+        
+        // Send previous chat messages to the client
+        sendPreviousMessages(ws, eventId);
         return;
       }
       
@@ -81,7 +90,7 @@ wss.on("connection", (ws, req) => {
 
       console.log(`[${new Date().toISOString()}] Received ${type} message for event: ${eventId} from ${role || "unknown role"}`);
 
-      // Handle different WebRTC signaling types
+      // Handle different message types
       switch (type) {
         case "offer":
           // Handle offer (from organizer to attendees)
@@ -97,6 +106,7 @@ wss.on("connection", (ws, req) => {
           break;
         case "stream-started":
           // Notify all clients that stream has started
+          activeStreams.set(eventId, true);
           broadcastToEvent(eventId, {
             type: "stream-started",
             eventId
@@ -104,10 +114,15 @@ wss.on("connection", (ws, req) => {
           break;
         case "stream-stopped":
           // Notify all clients that stream has stopped
+          activeStreams.set(eventId, false);
           broadcastToEvent(eventId, {
             type: "stream-stopped",
             eventId
           }, ws);
+          break;
+        case "chat-message":
+          // Handle chat messages
+          handleChatMessage(ws, data);
           break;
         default:
           console.log("Unknown message type:", type);
@@ -140,6 +155,11 @@ function joinRoom(ws, eventId, role) {
     });
   }
 
+  // Initialize chat message store if it doesn't exist
+  if (!chatMessages.has(eventId)) {
+    chatMessages.set(eventId, []);
+  }
+
   const eventRoom = clients.get(eventId);
   
   // Store client info
@@ -153,13 +173,29 @@ function joinRoom(ws, eventId, role) {
   } else {
     eventRoom.attendees.add(ws);
     console.log(`Attendee joined event ${eventId}. Total: ${eventRoom.attendees.size}`);
+    
+    // Check if stream is active for this event and notify organizers about new attendee
+    if (activeStreams.get(eventId)) {
+      console.log(`Stream is active for event ${eventId}, requesting fresh offer for new attendee`);
+      // Request new offer from organizers
+      for (const organizer of eventRoom.organizers) {
+        if (organizer.readyState === WebSocket.OPEN) {
+          organizer.send(JSON.stringify({
+            type: "new-attendee",
+            eventId,
+            needsOffer: true
+          }));
+        }
+      }
+    }
   }
   
   // Notify client of successful join
   ws.send(JSON.stringify({
     type: "room-joined",
     eventId,
-    role
+    role,
+    streamActive: activeStreams.get(eventId) || false
   }));
 }
 
@@ -172,6 +208,15 @@ function leaveRoom(ws, eventId) {
   if (ws.role === "organizer") {
     eventRoom.organizers.delete(ws);
     console.log(`Organizer left event ${eventId}. Remaining: ${eventRoom.organizers.size}`);
+    
+    // If last organizer leaves and was streaming, mark stream as inactive
+    if (eventRoom.organizers.size === 0 && activeStreams.get(eventId)) {
+      activeStreams.set(eventId, false);
+      broadcastToEvent(eventId, {
+        type: "stream-stopped",
+        eventId
+      });
+    }
   } else {
     eventRoom.attendees.delete(ws);
     console.log(`Attendee left event ${eventId}. Remaining: ${eventRoom.attendees.size}`);
@@ -181,7 +226,62 @@ function leaveRoom(ws, eventId) {
   if (eventRoom.organizers.size === 0 && eventRoom.attendees.size === 0) {
     clients.delete(eventId);
     console.log(`Event room ${eventId} removed - no participants left`);
+    
+    // Clean up stream status
+    activeStreams.delete(eventId);
+    
+    // Optionally: we could clean up chat messages here as well
+    // chatMessages.delete(eventId);
+    // But it might be better to keep them for when people rejoin
   }
+}
+
+// Send previous chat messages to a client
+function sendPreviousMessages(ws, eventId) {
+  if (!chatMessages.has(eventId)) return;
+  
+  const messages = chatMessages.get(eventId);
+  // Only send the most recent 50 messages to avoid overwhelming the client
+  const recentMessages = messages.slice(-50);
+  
+  if (recentMessages.length > 0) {
+    ws.send(JSON.stringify({
+      type: "previous-messages",
+      eventId,
+      messages: recentMessages
+    }));
+    console.log(`Sent ${recentMessages.length} previous messages to client in event ${eventId}`);
+  }
+}
+
+// Handle chat messages
+function handleChatMessage(ws, data) {
+  const { eventId, message } = data;
+
+  if (!eventId || !message) {
+    console.log("Invalid chat message format");
+    return;
+  }
+
+  console.log(`Chat message in ${eventId} from ${message.sender}: ${message.message}`);
+
+  // Store the message
+  if (!chatMessages.has(eventId)) {
+    chatMessages.set(eventId, []);
+  }
+
+  const messages = chatMessages.get(eventId);
+  if (messages.length >= 200) {
+    messages.shift(); // Remove the oldest message
+  }
+  messages.push(message);
+
+  // Broadcast to all clients except the sender
+  broadcastToEvent(eventId, {
+    type: "chat-message",
+    eventId,
+    message,
+  }, ws); // Excluding sender to prevent duplicate message
 }
 
 // Broadcast message to all clients in an event
@@ -208,12 +308,15 @@ function broadcastToEvent(eventId, message, except = null) {
 
 // Handle offer (from organizer to attendees)
 const handleOffer = (ws, data) => {
-  const { eventId, offer, role } = data;
+  const { eventId, offer, role, targetAttendee } = data;
   
   if (role !== "organizer") {
     console.log("Ignoring offer from non-organizer");
     return;
   }
+
+  // Mark the stream as active for this event
+  activeStreams.set(eventId, true);
 
   console.log(`Broadcasting offer from organizer to attendees for event ${eventId}`);
   
@@ -221,13 +324,24 @@ const handleOffer = (ws, data) => {
   if (!clients.has(eventId)) return;
   const eventRoom = clients.get(eventId);
   
-  // Send only to attendees
   const jsonMessage = JSON.stringify({
     type: "offer",
     eventId,
     offer
   });
   
+  // If a specific attendee is targeted (for late joiners)
+  if (targetAttendee) {
+    for (const client of eventRoom.attendees) {
+      if (client.id === targetAttendee && client.readyState === WebSocket.OPEN) {
+        console.log(`Sending offer to specific attendee: ${targetAttendee}`);
+        client.send(jsonMessage);
+        return;
+      }
+    }
+  }
+  
+  // Otherwise send to all attendees
   for (const client of eventRoom.attendees) {
     if (client.readyState === WebSocket.OPEN) {
       console.log("Sending offer to attendee");
@@ -238,7 +352,7 @@ const handleOffer = (ws, data) => {
 
 // Handle answer (from attendee to organizer)
 const handleAnswer = (ws, data) => {
-  const { eventId, answer, role } = data;
+  const { eventId, answer, role, targetConnection } = data;
   
   if (role !== "attendee") {
     console.log("Ignoring answer from non-attendee");
@@ -255,7 +369,8 @@ const handleAnswer = (ws, data) => {
   const jsonMessage = JSON.stringify({
     type: "answer",
     eventId,
-    answer
+    answer,
+    connectionId: targetConnection
   });
   
   for (const client of eventRoom.organizers) {
@@ -268,7 +383,7 @@ const handleAnswer = (ws, data) => {
 
 // Handle ICE candidate (from any user to relevant parties)
 const handleIceCandidate = (ws, data) => {
-  const { eventId, candidate, role } = data;
+  const { eventId, candidate, role, connectionId } = data;
 
   console.log(`Handling ICE candidate from ${role} for event ${eventId}`);
   
@@ -279,7 +394,8 @@ const handleIceCandidate = (ws, data) => {
   const jsonMessage = JSON.stringify({
     type: "ice-candidate",
     eventId,
-    candidate
+    candidate,
+    connectionId
   });
   
   // If from organizer, send to attendees
