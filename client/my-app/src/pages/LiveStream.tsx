@@ -453,6 +453,7 @@ const LiveStream = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          justifyContent: "center"
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
