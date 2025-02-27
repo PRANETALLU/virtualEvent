@@ -433,7 +433,8 @@ const LiveStream = () => {
         justifyContent: "center",
         alignItems: "stretch", // Align content properly
         minHeight: "100vh",
-        paddingTop: 10,
+        paddingTop: 12,
+        paddingBottom: 4, 
         width: "100%",
         maxWidth: "1200px",
         margin: "0 auto",
