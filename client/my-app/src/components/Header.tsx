@@ -1,10 +1,26 @@
-import { AppBar, Toolbar, Button, Box } from "@mui/material";
+import { AppBar, Toolbar, Button, Box, Avatar, Menu, MenuItem, IconButton } from "@mui/material";
 import { useUser } from "../context/UserContext";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+
+const getAvatarColor = (char: string) => {
+    const colors = ["#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B", "#FFC107", "#FF9800", "#FF5722"];
+    return colors[char.charCodeAt(0) % colors.length];
+};
+
 export const Header: React.FC = () => {
     const { userInfo, setUserInfo } = useUser();
     const navigate = useNavigate();
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
 
     const handleLogout = async () => {
         try {
@@ -15,7 +31,9 @@ export const Header: React.FC = () => {
         } catch (error) {
             console.error("Logout error", error);
         }
+        handleMenuClose();
     };
+
     return (
         <AppBar position="fixed" color="default">
             <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -25,15 +43,22 @@ export const Header: React.FC = () => {
                     </Link>
                 </Box>
                 {userInfo && (
-                    <>
-                        <Link to="/profile" style={{ textDecoration: 'none', marginRight: '10px' }}>
-                            <Button variant="contained" color="primary">Profile</Button>
-                        </Link>
-                        <Link to="/payments" style={{ textDecoration: 'none', marginRight: '10px' }}>
-                            <Button variant="contained" color="primary">Payments</Button>
-                        </Link>
-                        <Button onClick={handleLogout} variant="contained" color="secondary">Logout</Button>
-                    </>
+                    <Box>
+                        <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
+                            <Avatar sx={{ bgcolor: getAvatarColor(userInfo.username ? userInfo.username[0].toUpperCase() : "U") }}>
+                                {userInfo.username ? userInfo.username[0].toUpperCase() : "U"}
+                            </Avatar>
+                        </IconButton>
+                        <Menu
+                            anchorEl={anchorEl}
+                            open={Boolean(anchorEl)}
+                            onClose={handleMenuClose}
+                        >
+                            <MenuItem onClick={() => navigate("/profile")}>Profile</MenuItem>
+                            <MenuItem onClick={() => navigate("/payments")}>Payments</MenuItem>
+                            <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                        </Menu>
+                    </Box>
                 )}
             </Toolbar>
         </AppBar>
