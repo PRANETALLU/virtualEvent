@@ -41,7 +41,8 @@ const LiveStream = () => {
   const [streamingError, setStreamingError] = useState("");
   const { userInfo } = useUser();
   const clientIdRef = useRef<string>(`client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
-
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(true);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const navigate = useNavigate();
@@ -459,9 +460,27 @@ const LiveStream = () => {
     }
   };
 
+  const toggleMic = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = !isMicOn;
+      });
+      setIsMicOn(!isMicOn);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = !isVideoOn;
+      });
+      setIsVideoOn(!isVideoOn);
+    }
+  };
+
   return (
     <>
-      <Typography variant="h3" sx={{textAlign: "center", mt: 10}}>Event: {event?.title}</Typography>
+      <Typography variant="h3" sx={{ textAlign: "center", mt: 10 }}>Event: {event?.title}</Typography>
       <Box
         sx={{
           display: "flex",
@@ -514,6 +533,14 @@ const LiveStream = () => {
               >
                 End Stream
               </Button>
+              <Box display="flex" gap={2} mt={2}>
+                <Button variant="contained" onClick={toggleMic}>
+                  {isMicOn ? "Mute Mic" : "Unmute Mic"}
+                </Button>
+                <Button variant="contained" onClick={toggleVideo}>
+                  {isVideoOn ? "Turn Off Video" : "Turn On Video"}
+                </Button>
+              </Box>
               <Typography variant="subtitle1" mt={2}>Preview</Typography>
               <Box
                 component="video"
