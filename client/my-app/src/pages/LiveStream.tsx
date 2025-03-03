@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Chat from "../components/Chat";
 import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
 
@@ -20,6 +20,7 @@ const LiveStream = () => {
 
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Initialize WebSocket connection
@@ -96,7 +97,7 @@ const LiveStream = () => {
           case "new-attendee":
             console.log("New attendee joined, sending fresh offer");
             if (isOrganizer && isStreaming && localStreamRef.current) {
-              await regenerateOffer();
+              await regenerateOffer(data.connectionId);
             }
             break;
           case "offer":
@@ -240,11 +241,11 @@ const LiveStream = () => {
     return peerConnection;
   };
 
-  const regenerateOffer = async () => {
+  const regenerateOffer = async (connectionId = 'default') => {
     if (!isOrganizer || !localStreamRef.current || !ws) return;
 
     try {
-      const connectionId = `attendee-${Date.now()}`;
+      //const connectionId = `attendee-${Date.now()}`;
       const peerConnection = initPeerConnection(connectionId);
 
       // Add tracks from the existing stream
@@ -424,6 +425,15 @@ const LiveStream = () => {
     setIsStreaming(false);
   };
 
+  const endStreaming = async () => {
+    try {
+      await axios.post(`http://localhost:5000/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
+      navigate('/home'); 
+    }
+    catch(error) {
+      console.error("Error stopping livestream:", error);
+    }
+  };
 
   return (
     <Box
@@ -470,6 +480,13 @@ const LiveStream = () => {
               sx={{ mt: 2, width: "100%" }}
             >
               {isStreaming ? "Stop Streaming" : "Start Streaming"}
+            </Button>
+            <Button
+              onClick={endStreaming}
+              variant="contained"
+              sx={{ mt: 2, width: "100%" }}
+            >
+              End Stream
             </Button>
             <Typography variant="subtitle1" mt={2}>Preview</Typography>
             <Box

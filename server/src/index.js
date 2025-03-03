@@ -306,6 +306,11 @@ function broadcastToEvent(eventId, message, except = null) {
   }
 }
 
+function broadcastViewerCount(eventId) {
+  if (!clients.has(eventId)) return;
+  broadcastToEvent(eventId, { type: "viewer-count", eventId, count: clients.get(eventId).attendees.size });
+}
+
 // Handle offer (from organizer to attendees)
 const handleOffer = (ws, data) => {
   const { eventId, offer, role, targetAttendee } = data;
