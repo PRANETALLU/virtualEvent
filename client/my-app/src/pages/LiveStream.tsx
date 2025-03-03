@@ -5,13 +5,37 @@ import { useNavigate, useParams } from "react-router-dom";
 import Chat from "../components/Chat";
 import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
 
+interface Attendee {
+  _id: string;
+  username: string;
+  email: string;
+}
+
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  dateTime: string;
+  venue: string;
+  price: number;
+  category: string;
+  organizer: {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  attendees: Attendee[];
+  liveStreamUrl?: string;
+  ended: boolean;
+}
+
 const LiveStream = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const { eventId } = useParams<{ eventId: string }>();
-  const [event, setEvent] = useState(null);
+  const [event, setEvent] = useState<Event>();
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingError, setStreamingError] = useState("");
@@ -428,120 +452,119 @@ const LiveStream = () => {
   const endStreaming = async () => {
     try {
       await axios.post(`http://localhost:5000/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
-      navigate('/home'); 
+      navigate('/home');
     }
-    catch(error) {
+    catch (error) {
       console.error("Error stopping livestream:", error);
     }
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: { xs: "column", md: "row" }, // Stack on small screens, side-by-side on medium+
-        justifyContent: "center",
-        alignItems: "stretch", // Align content properly
-        minHeight: "100vh",
-        paddingTop: 12,
-        paddingBottom: 4, 
-        width: "100%",
-        maxWidth: "1200px",
-        margin: "0 auto",
-        gap: 0, // No gap between video and chat sections
-      }}
-    >
-      {/* Video Section */}
+    <>
+      <Typography variant="h2" sx={{textAlign: "center", mt: 10}}>Event: {event?.title}</Typography>
       <Box
         sx={{
-          flex: 2, // Video takes more space
-          minWidth: 300,
-          maxWidth: "700px",
-          p: 2,
-          bgcolor: "white",
-          borderRadius: 2,
-          boxShadow: 3,
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center"
+          flexDirection: { xs: "column", md: "row" }, // Stack on small screens, side-by-side on medium+
+          justifyContent: "center",
+          alignItems: "stretch", // Align content properly
+          minHeight: "100vh",
+          paddingTop: 4,
+          paddingBottom: 4,
+          width: "100%",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          gap: 0, // No gap between video and chat sections
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
-          {isOrganizer ? "Broadcast Controls" : "Live Stream"}
-        </Typography>
-
-        {isOrganizer ? (
-          <>
-            <Button
-              onClick={isStreaming ? stopStreaming : startStreaming}
-              variant="contained"
-              color={isStreaming ? "error" : "success"}
-              sx={{ mt: 2, width: "100%" }}
-            >
-              {isStreaming ? "Stop Streaming" : "Start Streaming"}
-            </Button>
-            <Button
-              onClick={endStreaming}
-              variant="contained"
-              sx={{ mt: 2, width: "100%" }}
-            >
-              End Stream
-            </Button>
-            <Typography variant="subtitle1" mt={2}>Preview</Typography>
-            <Box
-              component="video"
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, mt: 1 }}
-            />
-          </>
-        ) : (
-          <>
-            <Box
-              component="video"
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              controls
-              sx={{ width: "100%", bgcolor: "black", borderRadius: 1, minHeight: 300 }}
-            />
-            {!isStreaming && (
-              <Box textAlign="center" py={5} bgcolor="#f0f0f0" borderRadius={1}>
-                <Typography>Waiting for the organizer to start the stream...</Typography>
-              </Box>
-            )}
-            {streamingError && <Typography color="error" mt={1}>{streamingError}</Typography>}
-          </>
-        )}
-      </Box>
-
-      {/* Chat Section */}
-      {eventId && (
+        {/* Video Section */}
         <Box
           sx={{
-            flex: 1, // Chat takes the remaining space
+            flex: 2, // Video takes more space
             minWidth: 300,
-            maxWidth: "400px",
+            maxWidth: "700px",
             p: 2,
             bgcolor: "white",
             borderRadius: 2,
             boxShadow: 3,
             display: "flex",
             flexDirection: "column",
-            paddingTop: 0, // Ensure no extra padding at the top
+            alignItems: "center",
+            justifyContent: "center"
           }}
         >
-          <Chat eventId={eventId} />
+          <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+            {isOrganizer ? "Broadcast Controls" : "Live Stream"}
+          </Typography>
+
+          {isOrganizer ? (
+            <>
+              <Button
+                onClick={isStreaming ? stopStreaming : startStreaming}
+                variant="contained"
+                color={isStreaming ? "error" : "success"}
+                sx={{ mt: 2, width: "100%" }}
+              >
+                {isStreaming ? "Stop Streaming" : "Start Streaming"}
+              </Button>
+              <Button
+                onClick={endStreaming}
+                variant="contained"
+                sx={{ mt: 2, width: "100%" }}
+              >
+                End Stream
+              </Button>
+              <Typography variant="subtitle1" mt={2}>Preview</Typography>
+              <Box
+                component="video"
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                sx={{ width: "100%", bgcolor: "black", borderRadius: 1, mt: 1 }}
+              />
+            </>
+          ) : (
+            <>
+              <Box
+                component="video"
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                controls
+                sx={{ width: "100%", bgcolor: "black", borderRadius: 1, minHeight: 300 }}
+              />
+              {!isStreaming && (
+                <Box textAlign="center" py={5} bgcolor="#f0f0f0" borderRadius={1}>
+                  <Typography>Waiting for the organizer to start the stream...</Typography>
+                </Box>
+              )}
+              {streamingError && <Typography color="error" mt={1}>{streamingError}</Typography>}
+            </>
+          )}
         </Box>
-      )}
-    </Box>
 
-
-
-
+        {/* Chat Section */}
+        {eventId && (
+          <Box
+            sx={{
+              flex: 1, // Chat takes the remaining space
+              minWidth: 300,
+              maxWidth: "400px",
+              p: 2,
+              bgcolor: "white",
+              borderRadius: 2,
+              boxShadow: 3,
+              display: "flex",
+              flexDirection: "column",
+              paddingTop: 0, // Ensure no extra padding at the top
+            }}
+          >
+            <Chat eventId={eventId} />
+          </Box>
+        )}
+      </Box>
+    </>
   );
 };
 
