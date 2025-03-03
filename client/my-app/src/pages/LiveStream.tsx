@@ -461,7 +461,7 @@ const LiveStream = () => {
 
   return (
     <>
-      <Typography variant="h2" sx={{textAlign: "center", mt: 10}}>Event: {event?.title}</Typography>
+      <Typography variant="h3" sx={{textAlign: "center", mt: 10}}>Event: {event?.title}</Typography>
       <Box
         sx={{
           display: "flex",
