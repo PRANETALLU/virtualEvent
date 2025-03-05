@@ -81,7 +81,7 @@ exports.getEventById = async (req, res) => {
 // Update Event
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
-  const { title, description, date, time, venue, price, liveStreamUrl, chatEnabled, recordingUrl } = req.body;
+  const { title, description, dateTime, venue, price, category } = req.body;
 
   try {
     const { user } = req; // User is added to the request object by verifyToken middleware
@@ -92,19 +92,16 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    if (event.organizer.toString() !== user._id.toString()) {
+    if (event.organizer._id.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "You are not authorized to update this event" });
     }
 
     event.title = title || event.title;
     event.description = description || event.description;
-    event.date = date || event.date;
-    event.time = time || event.time;
+    event.dateTime = dateTime || event.date;
     event.venue = venue || event.venue;
     event.price = price || event.price;
-    event.liveStreamUrl = liveStreamUrl || event.liveStreamUrl;
-    event.chatEnabled = chatEnabled !== undefined ? chatEnabled : event.chatEnabled;
-    event.recordingUrl = recordingUrl || event.recordingUrl;
+    event.category = category || event.category;
 
     await event.save();
 

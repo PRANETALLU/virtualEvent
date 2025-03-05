@@ -38,7 +38,7 @@ export const Header: React.FC = () => {
         <AppBar position="fixed" color="default">
             <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Link to="/" style={{ textDecoration: 'none' }}>
+                    <Link to={userInfo ? "/home" : "/"} style={{ textDecoration: 'none' }}>
                         <img src="streamifylogo.png" alt="Streamify Logo" style={{ width: 200, height: "auto" }} />
                     </Link>
                 </Box>
