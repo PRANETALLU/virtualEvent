@@ -105,6 +105,15 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
     }
   };
 
+  const startLivestream = async () => {
+    try {
+      await axios.post(`http://localhost:5000/events/${_id}/livestream/start`, {}, { withCredentials: true });
+      navigate(`/watch/${_id}`);
+    } catch (error) {
+      console.error("Error starting livestream:", error);
+    }
+  };
+
   return (
     <Card style={styles.eventCard}>
       <CardContent style={styles.cardContent}>
@@ -164,7 +173,7 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
             </a>
           ) : (
             isOrganizer && !ended && (
-              <Button variant="contained" color="secondary" onClick={() => navigate(`/watch/${_id}`)}>
+              <Button variant="contained" color="secondary" onClick={startLivestream}>
                 Start Stream
               </Button>
             )
