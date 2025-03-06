@@ -114,6 +114,14 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
     }
   };
 
+  const formatDateTimeLocal = (isoString: any) => {
+    if (!isoString) return ""; 
+    const date = new Date(isoString);
+    const offset = date.getTimezoneOffset() * 60000; 
+    const localDate = new Date(date.getTime() - offset); 
+    return localDate.toISOString().slice(0, 16); 
+  };
+
   return (
     <Card style={styles.eventCard}>
       <CardContent style={styles.cardContent}>
@@ -215,7 +223,7 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
         <DialogContent>
           <TextField label="Title" fullWidth margin="dense" value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
           <TextField label="Description" fullWidth margin="dense" multiline value={editedEvent.description} onChange={(e) => setEditedEvent({ ...editedEvent, description: e.target.value })} />
-          <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={editedEvent.dateTime} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
+          <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={formatDateTimeLocal(editedEvent.dateTime)} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
           <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
           <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
           <TextField label="Category" fullWidth margin="dense" value={editedEvent.category} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
