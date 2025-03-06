@@ -92,7 +92,9 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    if (event.organizer._id.toString() !== user._id.toString()) {
+    console.log(event.organizer._id);
+    console.log(user.id);
+    if (event.organizer._id.toString() !== user.id.toString()) {
       return res.status(403).json({ message: "You are not authorized to update this event" });
     }
 

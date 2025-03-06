@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, Typography, IconButton, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
+import { Button, Card, CardContent, Typography, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
-import { DeleteOutline } from "@mui/icons-material";
+import { DeleteOutline, Edit } from "@mui/icons-material";
 
 interface Attendee {
   _id: string;
@@ -38,6 +38,27 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
   const isOrganizer = organizer?._id === userInfo?.id;
 
   const [openDialog, setOpenDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [editedEvent, setEditedEvent] = useState({ title, description, dateTime, venue, price, category });
+
+  const handleEditOpen = () => {
+    setEditedEvent({ title, description, dateTime, venue, price, category });
+    setOpenEditDialog(true);
+  };
+
+  const handleEditClose = () => {
+    setOpenEditDialog(false);
+  };
+
+  const handleEditSave = async () => {
+    try {
+      await axios.put(`http://localhost:5000/events/${_id}`, editedEvent, { withCredentials: true });
+      setOpenEditDialog(false);
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
 
   const startLivestream = async () => {
     try {
@@ -85,9 +106,14 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
           {title}
         </Typography>
         {userInfo?.id === organizer._id && (
+          <>
+          <IconButton onClick={handleEditOpen} color="primary">
+              <Edit />
+            </IconButton>
           <IconButton onClick={handleDialogOpen} color="error" style={styles.deleteButton}>
             <DeleteOutline />
           </IconButton>
+          </>
         )}
         <Typography variant="body2" color="textSecondary">
           {description}
@@ -156,6 +182,22 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={openEditDialog} onClose={handleEditClose}>
+          <DialogTitle>Edit Event</DialogTitle>
+          <DialogContent>
+            <TextField label="Title" fullWidth margin="dense" value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
+            <TextField label="Description" fullWidth margin="dense" multiline value={editedEvent.description} onChange={(e) => setEditedEvent({ ...editedEvent, description: e.target.value })} />
+            <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={editedEvent.dateTime} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
+            <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
+            <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
+            <TextField label="Category" fullWidth margin="dense" value={editedEvent.category} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleEditClose} color="primary">Cancel</Button>
+            <Button onClick={handleEditSave} color="primary">Save</Button>
+          </DialogActions>
+        </Dialog>
     </Card>
   );
 };
@@ -186,6 +228,7 @@ const styles = {
     display: "flex",
     gap: "10px",
   },
+  editButton: { position: "absolute", top: "10px", right: "50px" }
 };
 
 export default EventCard;
