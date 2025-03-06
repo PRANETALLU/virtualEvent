@@ -1,9 +1,22 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, CardContent, Typography, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import {
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Menu,
+  MenuItem,
+} from "@mui/material";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
-import { DeleteOutline, Edit } from "@mui/icons-material";
+import { DeleteOutline, Edit, MoreVert } from "@mui/icons-material";
 
 interface Attendee {
   _id: string;
@@ -34,38 +47,36 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
   const navigate = useNavigate();
   const { userInfo } = useUser();
   const [isAttending, setIsAttending] = useState(attendees.some((attendee) => attendee._id === userInfo?.id));
-
   const isOrganizer = organizer?._id === userInfo?.id;
 
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editedEvent, setEditedEvent] = useState({ title, description, dateTime, venue, price, category });
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setMenuAnchor(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+  };
 
   const handleEditOpen = () => {
     setEditedEvent({ title, description, dateTime, venue, price, category });
     setOpenEditDialog(true);
+    handleMenuClose();
   };
 
-  const handleEditClose = () => {
-    setOpenEditDialog(false);
-  };
+  const handleEditClose = () => setOpenEditDialog(false);
 
   const handleEditSave = async () => {
     try {
       await axios.put(`http://localhost:5000/events/${_id}`, editedEvent, { withCredentials: true });
       setOpenEditDialog(false);
-      window.location.reload(); 
+      window.location.reload();
     } catch (error) {
       console.error("Error updating event:", error);
-    }
-  };
-
-  const startLivestream = async () => {
-    try {
-      await axios.post(`http://localhost:5000/events/${_id}/livestream/start`, {}, { withCredentials: true });
-      navigate(`/watch/${_id}`);
-    } catch (error) {
-      console.error("Error starting livestream:", error);
     }
   };
 
@@ -94,30 +105,36 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
     }
   };
 
-  const handleDialogClose = () => {
-    setOpenDialog(false);
-  }
-  const handleDialogOpen = () => setOpenDialog(true);
-
   return (
     <Card style={styles.eventCard}>
       <CardContent style={styles.cardContent}>
-        <Typography variant="h5" gutterBottom>
-          {title}
-        </Typography>
-        {userInfo?.id === organizer._id && (
-          <>
-          <IconButton onClick={handleEditOpen} color="primary">
-              <Edit />
-            </IconButton>
-          <IconButton onClick={handleDialogOpen} color="error" style={styles.deleteButton}>
-            <DeleteOutline />
-          </IconButton>
-          </>
-        )}
-        <Typography variant="body2" color="textSecondary">
+        <div style={styles.header}>
+          <Typography variant="h5" fontWeight="bold">
+            {title}
+          </Typography>
+          {isOrganizer && (
+            <>
+              <IconButton onClick={handleMenuOpen}>
+                <MoreVert />
+              </IconButton>
+              <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
+                <MenuItem onClick={handleEditOpen}>
+                  <Edit fontSize="small" style={{ marginRight: 8 }} />
+                  Edit
+                </MenuItem>
+                <MenuItem onClick={() => setOpenDialog(true)} style={{ color: "red" }}>
+                  <DeleteOutline fontSize="small" style={{ marginRight: 8 }} />
+                  Delete
+                </MenuItem>
+              </Menu>
+            </>
+          )}
+        </div>
+
+        <Typography variant="body2" color="textSecondary" gutterBottom>
           {description}
         </Typography>
+
         <Typography variant="body2">
           <strong>Date:</strong> {new Date(dateTime).toLocaleString()}
         </Typography>
@@ -146,8 +163,8 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
               </Button>
             </a>
           ) : (
-            userInfo?.id === organizer._id && !ended && (
-              <Button variant="contained" color="secondary" onClick={startLivestream}>
+            isOrganizer && !ended && (
+              <Button variant="contained" color="secondary" onClick={() => navigate(`/watch/${_id}`)}>
                 Start Stream
               </Button>
             )
@@ -155,26 +172,26 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
         </div>
 
         {!isAttending && !isOrganizer && !ended && (
-          <Button variant="contained" color="success" onClick={handleJoinEvent}>
+          <Button variant="contained" color="success" onClick={handleJoinEvent} fullWidth>
             Join Event
           </Button>
         )}
 
         {isAttending && !isOrganizer && !ended && (
-          <Button variant="contained" disabled>
+          <Button variant="contained" disabled fullWidth>
             Attending
           </Button>
         )}
       </CardContent>
 
       {/* Confirmation Dialog */}
-      <Dialog open={openDialog} onClose={handleDialogClose}>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Delete Event</DialogTitle>
         <DialogContent>
           <Typography>Are you sure you want to delete this event?</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDialogClose} color="primary">
+          <Button onClick={() => setOpenDialog(false)} color="primary">
             Cancel
           </Button>
           <Button onClick={handleDelete} color="error">
@@ -183,52 +200,51 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
         </DialogActions>
       </Dialog>
 
+      {/* Edit Dialog */}
       <Dialog open={openEditDialog} onClose={handleEditClose}>
-          <DialogTitle>Edit Event</DialogTitle>
-          <DialogContent>
-            <TextField label="Title" fullWidth margin="dense" value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
-            <TextField label="Description" fullWidth margin="dense" multiline value={editedEvent.description} onChange={(e) => setEditedEvent({ ...editedEvent, description: e.target.value })} />
-            <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={editedEvent.dateTime} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
-            <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
-            <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
-            <TextField label="Category" fullWidth margin="dense" value={editedEvent.category} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleEditClose} color="primary">Cancel</Button>
-            <Button onClick={handleEditSave} color="primary">Save</Button>
-          </DialogActions>
-        </Dialog>
+        <DialogTitle>Edit Event</DialogTitle>
+        <DialogContent>
+          <TextField label="Title" fullWidth margin="dense" value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
+          <TextField label="Description" fullWidth margin="dense" multiline value={editedEvent.description} onChange={(e) => setEditedEvent({ ...editedEvent, description: e.target.value })} />
+          <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={editedEvent.dateTime} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
+          <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
+          <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
+          <TextField label="Category" fullWidth margin="dense" value={editedEvent.category} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose} color="primary">Cancel</Button>
+          <Button onClick={handleEditSave} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 };
 
 const styles = {
   eventCard: {
-    marginBottom: "20px",
-    padding: "15px",
+    margin: "16px",
+    padding: "16px",
     borderRadius: "8px",
-    backgroundColor: "#f9f9f9",
-    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
-    position: "relative" as "relative",
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
   },
   cardContent: {
-    position: "relative" as "relative",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "12px",
   },
-  deleteButton: {
-    position: "absolute" as "absolute",
-    top: "10px",
-    right: "10px",
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  buttonGroup: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "12px",
   },
   link: {
     textDecoration: "none",
-    marginRight: "10px",
   },
-  buttonGroup: {
-    marginTop: "10px",
-    display: "flex",
-    gap: "10px",
-  },
-  editButton: { position: "absolute", top: "10px", right: "50px" }
 };
 
 export default EventCard;
