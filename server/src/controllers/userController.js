@@ -73,3 +73,46 @@ exports.logout = async (req, res) => {
       res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+// Get user information
+exports.getUserInfo = async (req, res) => {
+  try {
+    const { id } = req.params; // Get user ID from URL params
+    const user = await User.findById(id).select('-password'); // Exclude password field
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Update user preferences
+exports.updatePreferences = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const { preferences } = req.body; 
+
+    if (!Array.isArray(preferences) || preferences.some(p => typeof p !== "string")) {
+      return res.status(400).json({ message: "Invalid preferences format" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { preferences },
+      { new: true, runValidators: true } 
+    ).select('-password'); 
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "Preferences updated successfully", user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
