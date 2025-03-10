@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
-import UserContextProvider, {  useUser } from './context/UserContext';
+import UserContextProvider, { useUser } from './context/UserContext';
 import LiveStream from "./pages/LiveStream";
 import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
@@ -16,13 +16,11 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// Private Route: Protects pages for logged-in users
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   const { userInfo } = useUser();
   return userInfo ? children : <Navigate to="/login" />;
 };
 
-// Redirect Route: Prevents logged-in users from accessing login/signup pages
 const RedirectRoute = ({ children }: { children: JSX.Element }) => {
   const { userInfo } = useUser();
   return userInfo ? <Navigate to="/home" /> : children;
@@ -34,26 +32,28 @@ const App: React.FC = () => {
       <UserContextProvider>
         <Header />
         <Routes>
-          {/* Redirect users away from these routes if they are logged in */}
+          {/* Redirect if logged in */}
           <Route path="/" element={<RedirectRoute><Welcome /></RedirectRoute>} />
           <Route path="/signup" element={<RedirectRoute><Signup /></RedirectRoute>} />
           <Route path="/login" element={<RedirectRoute><Login /></RedirectRoute>} />
 
-          {/* Protected routes for authenticated users */}
+          {/* Protected routes */}
           <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Search /></PrivateRoute>} />
           <Route path="/events/:eventId" element={<PrivateRoute><EventDetails /></PrivateRoute>} />
           <Route path="/watch/:eventId" element={<PrivateRoute><LiveStream /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-          <Route 
-            path="/payments" 
+
+          {/*Wrapper */}
+          <Route
+            path="/payments"
             element={
               <PrivateRoute>
                 <Elements stripe={stripePromise}>
                   <Payments />
                 </Elements>
               </PrivateRoute>
-            } 
+            }
           />
         </Routes>
       </UserContextProvider>
