@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const paymentRoutes = require("./controllers/paymentRouting");
+const notificationRoutes = require("./routes/notifRoutes"); 
 const http = require("http");
 const WebSocket = require("ws");
 const url = require("url");
@@ -54,6 +55,7 @@ app.use(cors({
 app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // WebSocket connection handler
 wss.on("connection", (ws, req) => {

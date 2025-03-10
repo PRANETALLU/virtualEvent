@@ -11,6 +11,7 @@ import { Header } from "./components/Header";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
 import Payments from './pages/Payments';
+import Notifications from './pages/Notifications'; 
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -43,6 +44,7 @@ const App: React.FC = () => {
           <Route path="/events/:eventId" element={<PrivateRoute><EventDetails /></PrivateRoute>} />
           <Route path="/watch/:eventId" element={<PrivateRoute><LiveStream /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} /> 
 
           {/*Wrapper */}
           <Route
