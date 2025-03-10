@@ -1,11 +1,19 @@
-import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { Box, TextField, Button, Typography, List, ListItem } from "@mui/material";
+import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from "react";
+import { Box, TextField, Button, Typography, List, ListItem, IconButton, CircularProgress } from "@mui/material";
 import { useUser } from "../context/UserContext";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
 interface ChatMessage {
   sender: string;
   message: string;
   createdAt: number;
+  fileAttachment?: {
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+  };
 }
 
 interface ChatProps {
@@ -13,13 +21,17 @@ interface ChatProps {
 }
 
 const WS_URL = "ws://localhost:5000/ws";
+const API_URL = "http://localhost:5000"; // Base API URL for file uploads
 
 const Chat: React.FC<ChatProps> = ({ eventId }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
   const [connected, setConnected] = useState<boolean>(false);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { userInfo } = useUser();
 
   useEffect(() => {
@@ -77,31 +89,114 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim() && socket && connected) {
-      const messageData: ChatMessage = {
-        sender: userInfo?.username || "User",
-        message: newMessage.trim(),
-        createdAt: Date.now(),
-      };
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFileToUpload(e.target.files[0]);
+    }
+  };
 
-      // Send message to the server
-      socket.send(
-        JSON.stringify({
-          type: "chat-message",
-          eventId: eventId,
-          message: messageData,
-        })
-      );
+  const handleRemoveFile = () => {
+    setFileToUpload(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
-      setNewMessage("");
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("eventId", eventId);
+
+    try {
+      const response = await fetch(`${API_URL}/upload-file`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("File upload failed");
+      }
+
+      const data = await response.json();
+      return data.fileUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      throw error;
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if ((newMessage.trim() || fileToUpload) && socket && connected) {
+      try {
+        // If there's a file to upload, upload it first
+        let fileAttachment = undefined;
+        
+        if (fileToUpload) {
+          setIsUploading(true);
+          try {
+            const fileUrl = await uploadFile(fileToUpload);
+            fileAttachment = {
+              name: fileToUpload.name,
+              type: fileToUpload.type,
+              size: fileToUpload.size,
+              url: fileUrl
+            };
+          } catch (error) {
+            console.error("File upload failed:", error);
+            setIsUploading(false);
+            return;
+          }
+        }
+
+        const messageData: ChatMessage = {
+          sender: userInfo?.username || "User",
+          message: newMessage.trim(),
+          createdAt: Date.now(),
+          fileAttachment
+        };
+
+        // Send message to the server
+        socket.send(
+          JSON.stringify({
+            type: "chat-message",
+            eventId: eventId,
+            message: messageData,
+          })
+        );
+
+        setNewMessage("");
+        setFileToUpload(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleDownloadFile = (fileUrl: string, fileName: string) => {
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+    else return (bytes / 1073741824).toFixed(1) + " GB";
   };
 
   return (
@@ -132,6 +227,36 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
               <Typography component="div" sx={{ wordBreak: "break-word" }}>
                 {msg.message}
               </Typography>
+              {msg.fileAttachment && (
+                <Box 
+                  sx={{ 
+                    mt: 1, 
+                    p: 1, 
+                    border: '1px solid #e0e0e0', 
+                    borderRadius: 1,
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    maxWidth: '300px'
+                  }}
+                >
+                  <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                    <Typography noWrap variant="body2" fontWeight="medium">
+                      {msg.fileAttachment.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatFileSize(msg.fileAttachment.size)}
+                    </Typography>
+                  </Box>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleDownloadFile(msg.fileAttachment!.url, msg.fileAttachment!.name)}
+                  >
+                    <FileDownloadIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
               <Typography variant="caption" color="text.secondary">
                 {new Date(msg.createdAt).toLocaleTimeString()}
               </Typography>
@@ -140,7 +265,44 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
         </List>
         <div ref={messagesEndRef} />
       </Box>
+      
+      {fileToUpload && (
+        <Box sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ 
+            p: 1, 
+            border: '1px solid #e0e0e0', 
+            borderRadius: 1,
+            bgcolor: 'rgba(0, 0, 0, 0.04)',
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%'
+          }}>
+            <Typography noWrap sx={{ flex: 1 }} variant="body2">
+              {fileToUpload.name} ({formatFileSize(fileToUpload.size)})
+            </Typography>
+            <Button size="small" color="error" onClick={handleRemoveFile}>
+              Remove
+            </Button>
+          </Box>
+        </Box>
+      )}
+      
       <Box sx={{ display: "flex", gap: 1, p: 2, pt: 0 }}>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+          id="file-input"
+        />
+        <IconButton 
+          component="label" 
+          htmlFor="file-input"
+          disabled={!connected || isUploading}
+          sx={{ alignSelf: 'center' }}
+        >
+          <AttachFileIcon />
+        </IconButton>
         <TextField
           fullWidth
           variant="outlined"
@@ -149,14 +311,20 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={!connected}
+          disabled={!connected || isUploading}
+          multiline
+          maxRows={4}
         />
-        <Button variant="contained" onClick={handleSendMessage} disabled={!connected}>
-          Send
+        <Button 
+          variant="contained" 
+          onClick={handleSendMessage} 
+          disabled={!connected || isUploading || (!newMessage.trim() && !fileToUpload)}
+          sx={{ minWidth: '80px' }}
+        >
+          {isUploading ? <CircularProgress size={24} color="inherit" /> : "Send"}
         </Button>
       </Box>
     </>
-
   );
 };
 
