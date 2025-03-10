@@ -8,6 +8,9 @@ const paymentRoutes = require("./controllers/paymentRouting");
 const http = require("http");
 const WebSocket = require("ws");
 const url = require("url");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 mongoose.connect(process.env.MONGO_URI);
@@ -17,6 +20,37 @@ db.once("open", () => console.log("MongoDB connected"));
 
 const app = express();
 const server = http.createServer(app);
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Create event-specific directory
+    const eventDir = path.join(uploadsDir, req.body.eventId || "general");
+    if (!fs.existsSync(eventDir)) {
+      fs.mkdirSync(eventDir, { recursive: true });
+    }
+    cb(null, eventDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // limit to 50MB
+  },
+});
 
 // WebSocket server setup
 const wss = new WebSocket.Server({ noServer: true });
@@ -49,6 +83,34 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || "http://localhost:5173",
   credentials: true,
 }));
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// File upload endpoint
+app.post("/upload-file", upload.single("file"), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Create a URL for the uploaded file
+    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
+      req.body.eventId ? req.body.eventId + "/" : ""
+    }${req.file.filename}`;
+
+    res.status(200).json({
+      message: "File uploaded successfully",
+      fileUrl,
+      fileName: req.file.originalname,
+      fileType: req.file.mimetype,
+      fileSize: req.file.size,
+    });
+  } catch (error) {
+    console.error("File upload error:", error);
+    res.status(500).json({ error: "File upload failed" });
+  }
+});
 
 // Routes
 app.use("/user", userRoutes);
@@ -264,6 +326,9 @@ function handleChatMessage(ws, data) {
   }
 
   console.log(`Chat message in ${eventId} from ${message.sender}: ${message.message}`);
+  if (message.fileAttachment) {
+    console.log(`With file attachment: ${message.fileAttachment.name} (${message.fileAttachment.type})`);
+  }
 
   // Store the message
   if (!chatMessages.has(eventId)) {
