@@ -13,6 +13,9 @@ import {
   TextField,
   Menu,
   MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import axios from "axios";
 import { useUser } from "../context/UserContext";
@@ -42,6 +45,11 @@ interface EventProps {
   ended: boolean;
   onDelete: (deletedEventId: string) => void;
 }
+
+const eventCategories = [
+  "Music", "Arts", "Sports", "Tech", "Business", "Education",
+  "Food", "Health", "Community", "Travel", "Gaming", "Other"
+];
 
 const EventCard = ({ _id, title, description, dateTime, venue, price, category, organizer, attendees, liveStreamUrl, ended, onDelete }: EventProps) => {
   const navigate = useNavigate();
@@ -115,11 +123,11 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
   };
 
   const formatDateTimeLocal = (isoString: any) => {
-    if (!isoString) return ""; 
+    if (!isoString) return "";
     const date = new Date(isoString);
-    const offset = date.getTimezoneOffset() * 60000; 
-    const localDate = new Date(date.getTime() - offset); 
-    return localDate.toISOString().slice(0, 16); 
+    const offset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() - offset);
+    return localDate.toISOString().slice(0, 16);
   };
 
   return (
@@ -226,7 +234,19 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
           <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={formatDateTimeLocal(editedEvent.dateTime)} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
           <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
           <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
-          <TextField label="Category" fullWidth margin="dense" value={editedEvent.category} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
+          <FormControl fullWidth margin="dense">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={editedEvent.category}
+              onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })}
+            >
+              {eventCategories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditClose} color="primary">Cancel</Button>
