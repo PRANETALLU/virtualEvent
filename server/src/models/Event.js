@@ -1,5 +1,12 @@
 const mongoose = require("mongoose");
 
+const FileSchema = new mongoose.Schema({
+  fileName: { type: String, required: true },
+  fileType: { type: String, required: true },
+  fileSize: { type: Number, required: true },
+  fileUrl: { type: String, required: true }
+});
+
 const EventSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
@@ -13,6 +20,7 @@ const EventSchema = new mongoose.Schema({
   chatEnabled: { type: Boolean, default: true },
   recordingUrl: { type: String, default: "" }, // Optional recorded session
   ended: { type: Boolean, default: false },
+  files: [FileSchema],
   createdAt: { type: Date, default: Date.now },
 });
 
