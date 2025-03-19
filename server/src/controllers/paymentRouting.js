@@ -1,6 +1,8 @@
 const express = require('express');
 const { createPaymentIntent } = require('./stripeService');
+const { savePayment } = require('./paymentController');
 const router = express.Router();
+
 router.post('/create-payment-intent', async (req, res) => {
   const { amount } = req.body;
   try {
@@ -11,4 +13,9 @@ router.post('/create-payment-intent', async (req, res) => {
     res.status(500).send({ error: error.message });
   }
 });
+
+router.post('/save-payment', async (req, res) => {
+  await savePayment(req, res);
+});
+
 module.exports = router;
