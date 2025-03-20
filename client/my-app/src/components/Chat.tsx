@@ -102,28 +102,57 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
     }
   };
 
+  // Helper function to convert file to base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file); // Converts file to base64
+    });
+  };
+
   const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("eventId", eventId);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-    try {
-      const response = await fetch(`${API_URL}/upload-file`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      reader.onload = async () => {
+        try {
+          const base64FileContent = (reader.result as string).split(",")[1]; // Extract Base64 content
 
-      if (!response.ok) {
-        throw new Error("File upload failed");
-      }
+          const response = await fetch(`${API_URL}/upload-file`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              fileContent: base64FileContent, // Send Base64 content
+              eventId: eventId,
+            }),
+            credentials: "include",
+          });
 
-      const data = await response.json();
-      return data.fileUrl;
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      throw error;
-    }
+          if (!response.ok) {
+            throw new Error("File upload failed");
+          }
+
+          const data = await response.json();
+          resolve(data.fileUrl);
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          alert("File upload failed. Please try again.");
+          reject(error);
+        }
+      };
+
+      reader.onerror = () => {
+        alert("Failed to read file");
+        reject(new Error("Failed to read file"));
+      };
+
+      reader.readAsDataURL(file); // Read file as Base64
+    });
   };
 
   const handleSendMessage = async () => {
@@ -131,11 +160,12 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
       try {
         // If there's a file to upload, upload it first
         let fileAttachment = undefined;
-        
         if (fileToUpload) {
+          console.log(fileToUpload, fileToUpload.name, fileToUpload.type, fileToUpload.size)
           setIsUploading(true);
           try {
             const fileUrl = await uploadFile(fileToUpload);
+            console.log('File URL', fileUrl)
             fileAttachment = {
               name: fileToUpload.name,
               type: fileToUpload.type,
@@ -183,13 +213,43 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
     }
   };
 
-  const handleDownloadFile = (fileUrl: string, fileName: string) => {
+  /*const handleDownloadFile = (fileUrl: string, fileName: string) => {
+    console.log("File Downloading:", fileName)
     const link = document.createElement("a");
     link.href = fileUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };*/
+
+  const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(`${API_URL}/download-file/${eventId}/${fileName}`, {
+        method: "GET",
+        credentials: "include", // Ensure proper session handling if needed
+      });
+  
+      if (!response.ok) {
+        throw new Error("File download failed");
+      }
+  
+      const blob = await response.blob(); // Convert response to a binary object
+      const blobUrl = URL.createObjectURL(blob); // Create a temporary object URL
+  
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  
+      // Cleanup the blob URL to free memory
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download file. Please try again.");
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -228,11 +288,11 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
                 {msg.message}
               </Typography>
               {msg.fileAttachment && (
-                <Box 
-                  sx={{ 
-                    mt: 1, 
-                    p: 1, 
-                    border: '1px solid #e0e0e0', 
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1,
+                    border: '1px solid #e0e0e0',
                     borderRadius: 1,
                     bgcolor: 'rgba(0, 0, 0, 0.04)',
                     display: 'flex',
@@ -249,8 +309,8 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
                       {formatFileSize(msg.fileAttachment.size)}
                     </Typography>
                   </Box>
-                  <IconButton 
-                    size="small" 
+                  <IconButton
+                    size="small"
                     onClick={() => handleDownloadFile(msg.fileAttachment!.url, msg.fileAttachment!.name)}
                   >
                     <FileDownloadIcon fontSize="small" />
@@ -265,12 +325,12 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
         </List>
         <div ref={messagesEndRef} />
       </Box>
-      
+
       {fileToUpload && (
         <Box sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center' }}>
-          <Box sx={{ 
-            p: 1, 
-            border: '1px solid #e0e0e0', 
+          <Box sx={{
+            p: 1,
+            border: '1px solid #e0e0e0',
             borderRadius: 1,
             bgcolor: 'rgba(0, 0, 0, 0.04)',
             display: 'flex',
@@ -286,7 +346,7 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
           </Box>
         </Box>
       )}
-      
+
       <Box sx={{ display: "flex", gap: 1, p: 2, pt: 0 }}>
         <input
           type="file"
@@ -295,8 +355,8 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
           style={{ display: "none" }}
           id="file-input"
         />
-        <IconButton 
-          component="label" 
+        <IconButton
+          component="label"
           htmlFor="file-input"
           disabled={!connected || isUploading}
           sx={{ alignSelf: 'center' }}
@@ -315,9 +375,9 @@ const Chat: React.FC<ChatProps> = ({ eventId }) => {
           multiline
           maxRows={4}
         />
-        <Button 
-          variant="contained" 
-          onClick={handleSendMessage} 
+        <Button
+          variant="contained"
+          onClick={handleSendMessage}
           disabled={!connected || isUploading || (!newMessage.trim() && !fileToUpload)}
           sx={{ minWidth: '80px' }}
         >

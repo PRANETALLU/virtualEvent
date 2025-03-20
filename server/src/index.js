@@ -5,13 +5,14 @@ const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const paymentRoutes = require("./controllers/paymentRouting");
-const notificationRoutes = require("./routes/notificationsRoutes"); 
+const notificationRoutes = require("./routes/notificationsRoutes");
 const http = require("http");
 const WebSocket = require("ws");
 const url = require("url");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const Event = require('./models/Event');
 require("dotenv").config();
 
 mongoose.connect(process.env.MONGO_URI);
@@ -22,36 +23,11 @@ db.once("open", () => console.log("MongoDB connected"));
 const app = express();
 const server = http.createServer(app);
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+const baseUploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(baseUploadDir)) {
+  fs.mkdirSync(baseUploadDir);
 }
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Create event-specific directory
-    const eventDir = path.join(uploadsDir, req.body.eventId || "general");
-    if (!fs.existsSync(eventDir)) {
-      fs.mkdirSync(eventDir, { recursive: true });
-    }
-    cb(null, eventDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // limit to 50MB
-  },
-});
 
 // WebSocket server setup
 const wss = new WebSocket.Server({ noServer: true });
@@ -88,28 +64,63 @@ app.use(cors({
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// File upload endpoint
-app.post("/upload-file", upload.single("file"), (req, res) => {
+// **Upload File (Creates Event Directory)**
+app.post("/upload-file", (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    const { fileName, fileContent, eventId } = req.body; // Expecting eventId
+
+    if (!fileName || !fileContent || !eventId) {
+      return res.status(400).json({ error: "Missing fileName, fileContent, or eventId" });
     }
 
-    // Create a URL for the uploaded file
-    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${
-      req.body.eventId ? req.body.eventId + "/" : ""
-    }${req.file.filename}`;
+    const eventDir = path.join(baseUploadDir, eventId);
 
-    res.status(200).json({
-      message: "File uploaded successfully",
-      fileUrl,
-      fileName: req.file.originalname,
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
-    });
+    // Ensure event-specific directory exists
+    if (!fs.existsSync(eventDir)) {
+      fs.mkdirSync(eventDir, { recursive: true });
+    }
+
+    const filePath = path.join(eventDir, fileName);
+    fs.writeFileSync(filePath, fileContent, "base64"); // Save file
+
+    res.json({ message: "File uploaded", fileUrl: `/download-file/${eventId}/${fileName}` });
   } catch (error) {
-    console.error("File upload error:", error);
     res.status(500).json({ error: "File upload failed" });
+  }
+});
+
+// **Download File (from Event Directory)**
+app.get("/download-file/:eventId/:fileName", (req, res) => {
+  try {
+    const { eventId, fileName } = req.params;
+    const filePath = path.join(baseUploadDir, eventId, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    const fileData = fs.readFileSync(filePath);
+    res.send(fileData);
+  } catch (error) {
+    res.status(500).json({ error: "File download failed" });
+  }
+});
+
+// **View File in Browser**
+app.get("/view-file/:eventId/:fileName", (req, res) => {
+  try {
+    const { eventId, fileName } = req.params;
+    const filePath = path.join(baseUploadDir, eventId, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    const fileData = fs.readFileSync(filePath);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.send(fileData);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to view file" });
   }
 });
 
@@ -122,7 +133,7 @@ app.use("/api/notifications", notificationRoutes);
 // WebSocket connection handler
 wss.on("connection", (ws, req) => {
   console.log("Client connected");
-  
+
   // Store client data
   ws.isAlive = true;
   ws.eventId = null;
@@ -137,22 +148,22 @@ wss.on("connection", (ws, req) => {
     try {
       const data = JSON.parse(message);
       const { eventId, type, role } = data;
-      
+
       // Join room message handling
       if (type === "join-room" && eventId) {
         joinRoom(ws, eventId, role || "attendee");
-        
+
         // Send previous chat messages to the client
         sendPreviousMessages(ws, eventId);
         return;
       }
-      
+
       if (!eventId) {
-        console.log("Message missing eventId, ignoring");
+        //console.log("Message missing eventId, ignoring");
         return;
       }
 
-      console.log(`[${new Date().toISOString()}] Received ${type} message for event: ${eventId} from ${role || "unknown role"}`);
+      //console.log(`[${new Date().toISOString()}] Received ${type} message for event: ${eventId} from ${role || "unknown role"}`);
 
       // Handle different message types
       switch (type) {
@@ -198,7 +209,7 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    console.log("Client disconnected");
+    //console.log("Client disconnected");
     if (ws.eventId) {
       leaveRoom(ws, ws.eventId);
     }
@@ -225,22 +236,22 @@ function joinRoom(ws, eventId, role) {
   }
 
   const eventRoom = clients.get(eventId);
-  
+
   // Store client info
   ws.eventId = eventId;
   ws.role = role;
-  
+
   // Add to appropriate set
   if (role === "organizer") {
     eventRoom.organizers.add(ws);
-    console.log(`Organizer joined event ${eventId}. Total: ${eventRoom.organizers.size}`);
+    //console.log(`Organizer joined event ${eventId}. Total: ${eventRoom.organizers.size}`);
   } else {
     eventRoom.attendees.add(ws);
-    console.log(`Attendee joined event ${eventId}. Total: ${eventRoom.attendees.size}`);
-    
+    //console.log(`Attendee joined event ${eventId}. Total: ${eventRoom.attendees.size}`);
+
     // Check if stream is active for this event and notify organizers about new attendee
     if (activeStreams.get(eventId)) {
-      console.log(`Stream is active for event ${eventId}, requesting fresh offer for new attendee`);
+      //console.log(`Stream is active for event ${eventId}, requesting fresh offer for new attendee`);
       // Request new offer from organizers
       for (const organizer of eventRoom.organizers) {
         if (organizer.readyState === WebSocket.OPEN) {
@@ -253,7 +264,7 @@ function joinRoom(ws, eventId, role) {
       }
     }
   }
-  
+
   // Notify client of successful join
   ws.send(JSON.stringify({
     type: "room-joined",
@@ -266,13 +277,13 @@ function joinRoom(ws, eventId, role) {
 // Leaving an event room
 function leaveRoom(ws, eventId) {
   if (!clients.has(eventId)) return;
-  
+
   const eventRoom = clients.get(eventId);
-  
+
   if (ws.role === "organizer") {
     eventRoom.organizers.delete(ws);
-    console.log(`Organizer left event ${eventId}. Remaining: ${eventRoom.organizers.size}`);
-    
+    //console.log(`Organizer left event ${eventId}. Remaining: ${eventRoom.organizers.size}`);
+
     // If last organizer leaves and was streaming, mark stream as inactive
     if (eventRoom.organizers.size === 0 && activeStreams.get(eventId)) {
       activeStreams.set(eventId, false);
@@ -283,17 +294,17 @@ function leaveRoom(ws, eventId) {
     }
   } else {
     eventRoom.attendees.delete(ws);
-    console.log(`Attendee left event ${eventId}. Remaining: ${eventRoom.attendees.size}`);
+    //console.log(`Attendee left event ${eventId}. Remaining: ${eventRoom.attendees.size}`);
   }
-  
+
   // Clean up empty rooms
   if (eventRoom.organizers.size === 0 && eventRoom.attendees.size === 0) {
     clients.delete(eventId);
-    console.log(`Event room ${eventId} removed - no participants left`);
-    
+    //console.log(`Event room ${eventId} removed - no participants left`);
+
     // Clean up stream status
     activeStreams.delete(eventId);
-    
+
     // Optionally: we could clean up chat messages here as well
     // chatMessages.delete(eventId);
     // But it might be better to keep them for when people rejoin
@@ -303,18 +314,18 @@ function leaveRoom(ws, eventId) {
 // Send previous chat messages to a client
 function sendPreviousMessages(ws, eventId) {
   if (!chatMessages.has(eventId)) return;
-  
+
   const messages = chatMessages.get(eventId);
   // Only send the most recent 50 messages to avoid overwhelming the client
   const recentMessages = messages.slice(-50);
-  
+
   if (recentMessages.length > 0) {
     ws.send(JSON.stringify({
       type: "previous-messages",
       eventId,
       messages: recentMessages
     }));
-    console.log(`Sent ${recentMessages.length} previous messages to client in event ${eventId}`);
+    //console.log(`Sent ${recentMessages.length} previous messages to client in event ${eventId}`);
   }
 }
 
@@ -327,7 +338,7 @@ function handleChatMessage(ws, data) {
     return;
   }
 
-  console.log(`Chat message in ${eventId} from ${message.sender}: ${message.message}`);
+  //console.log(`Chat message in ${eventId} from ${message.sender}: ${message.message}`);
   if (message.fileAttachment) {
     console.log(`With file attachment: ${message.fileAttachment.name} (${message.fileAttachment.type})`);
   }
@@ -354,17 +365,17 @@ function handleChatMessage(ws, data) {
 // Broadcast message to all clients in an event
 function broadcastToEvent(eventId, message, except = null) {
   if (!clients.has(eventId)) return;
-  
+
   const eventRoom = clients.get(eventId);
   const jsonMessage = JSON.stringify(message);
-  
+
   // Send to organizers
   for (const client of eventRoom.organizers) {
     if (client !== except && client.readyState === WebSocket.OPEN) {
       client.send(jsonMessage);
     }
   }
-  
+
   // Send to attendees
   for (const client of eventRoom.attendees) {
     if (client !== except && client.readyState === WebSocket.OPEN) {
@@ -381,7 +392,7 @@ function broadcastViewerCount(eventId) {
 // Handle offer (from organizer to attendees)
 const handleOffer = (ws, data) => {
   const { eventId, offer, role, targetAttendee } = data;
-  
+
   if (role !== "organizer") {
     console.log("Ignoring offer from non-organizer");
     return;
@@ -390,33 +401,33 @@ const handleOffer = (ws, data) => {
   // Mark the stream as active for this event
   activeStreams.set(eventId, true);
 
-  console.log(`Broadcasting offer from organizer to attendees for event ${eventId}`);
-  
+  //console.log(`Broadcasting offer from organizer to attendees for event ${eventId}`);
+
   // Get event room
   if (!clients.has(eventId)) return;
   const eventRoom = clients.get(eventId);
-  
+
   const jsonMessage = JSON.stringify({
     type: "offer",
     eventId,
     offer
   });
-  
+
   // If a specific attendee is targeted (for late joiners)
   if (targetAttendee) {
     for (const client of eventRoom.attendees) {
       if (client.id === targetAttendee && client.readyState === WebSocket.OPEN) {
-        console.log(`Sending offer to specific attendee: ${targetAttendee}`);
+        //console.log(`Sending offer to specific attendee: ${targetAttendee}`);
         client.send(jsonMessage);
         return;
       }
     }
   }
-  
+
   // Otherwise send to all attendees
   for (const client of eventRoom.attendees) {
     if (client.readyState === WebSocket.OPEN) {
-      console.log("Sending offer to attendee");
+      //console.log("Sending offer to attendee");
       client.send(jsonMessage);
     }
   }
@@ -425,18 +436,18 @@ const handleOffer = (ws, data) => {
 // Handle answer (from attendee to organizer)
 const handleAnswer = (ws, data) => {
   const { eventId, answer, role, targetConnection } = data;
-  
+
   if (role !== "attendee") {
     console.log("Ignoring answer from non-attendee");
     return;
   }
 
-  console.log(`Sending answer from attendee to organizer for event ${eventId}`);
-  
+  //console.log(`Sending answer from attendee to organizer for event ${eventId}`);
+
   // Get event room
   if (!clients.has(eventId)) return;
   const eventRoom = clients.get(eventId);
-  
+
   // Send only to organizers
   const jsonMessage = JSON.stringify({
     type: "answer",
@@ -444,10 +455,10 @@ const handleAnswer = (ws, data) => {
     answer,
     connectionId: targetConnection
   });
-  
+
   for (const client of eventRoom.organizers) {
     if (client.readyState === WebSocket.OPEN) {
-      console.log("Sending answer to organizer");
+      //console.log("Sending answer to organizer");
       client.send(jsonMessage);
     }
   }
@@ -457,19 +468,19 @@ const handleAnswer = (ws, data) => {
 const handleIceCandidate = (ws, data) => {
   const { eventId, candidate, role, connectionId } = data;
 
-  console.log(`Handling ICE candidate from ${role} for event ${eventId}`);
-  
+  //console.log(`Handling ICE candidate from ${role} for event ${eventId}`);
+
   // Get event room
   if (!clients.has(eventId)) return;
   const eventRoom = clients.get(eventId);
-  
+
   const jsonMessage = JSON.stringify({
     type: "ice-candidate",
     eventId,
     candidate,
     connectionId
   });
-  
+
   // If from organizer, send to attendees
   if (role === "organizer") {
     for (const client of eventRoom.attendees) {
@@ -477,7 +488,7 @@ const handleIceCandidate = (ws, data) => {
         client.send(jsonMessage);
       }
     }
-  } 
+  }
   // If from attendee, send to organizers
   else if (role === "attendee") {
     for (const client of eventRoom.organizers) {
@@ -492,7 +503,7 @@ const handleIceCandidate = (ws, data) => {
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) return ws.terminate();
-    
+
     ws.isAlive = false;
     ws.ping();
   });
