@@ -1,6 +1,8 @@
 const Event = require('../models/Event');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const fs = require("fs");
+const path = require("path");
 require('dotenv').config();
 
 /*const secret = process.env.SECRET_KEY;
@@ -194,6 +196,8 @@ exports.startLivestream = async (req, res) => {
   }
 };
 
+const baseUploadDir = path.join(__dirname, "..", "uploads");
+
 exports.stopLivestream = async (req, res) => {
   const { eventId } = req.params;
 
@@ -215,6 +219,14 @@ exports.stopLivestream = async (req, res) => {
     event.liveStreamUrl = "";
     event.ended = true;
     await event.save();
+
+    // Define event-specific directory
+    const eventDir = path.join(baseUploadDir, eventId);
+
+    // Delete event directory if it exists
+    if (fs.existsSync(eventDir)) {
+      fs.rmSync(eventDir, { recursive: true, force: true });
+    }
 
     res.status(200).json({ message: "Livestream stopped and event ended successfully" });
   } catch (err) {
