@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -47,20 +47,72 @@ interface EventProps {
 }
 
 const eventCategories = [
-  "Music", "Arts", "Sports", "Tech", "Business", "Education",
-  "Food", "Health", "Community", "Travel", "Gaming", "Other"
+  "Music",
+  "Arts",
+  "Sports",
+  "Tech",
+  "Business",
+  "Education",
+  "Food",
+  "Health",
+  "Community",
+  "Travel",
+  "Gaming",
+  "Other",
 ];
 
-const EventCard = ({ _id, title, description, dateTime, venue, price, category, organizer, attendees, liveStreamUrl, ended, onDelete }: EventProps) => {
+const EventCard = ({
+  _id,
+  title,
+  description,
+  dateTime,
+  venue,
+  price,
+  category,
+  organizer,
+  attendees,
+  liveStreamUrl,
+  ended,
+  onDelete,
+}: EventProps) => {
   const navigate = useNavigate();
   const { userInfo } = useUser();
-  const [isAttending, setIsAttending] = useState(attendees.some((attendee) => attendee._id === userInfo?.id));
+  const [isAttending, setIsAttending] = useState(
+    attendees.some((attendee) => attendee._id === userInfo?.id)
+  );
   const isOrganizer = organizer?._id === userInfo?.id;
+  const [userHasPaid, setUserHasPaid] = useState(false);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [editedEvent, setEditedEvent] = useState({ title, description, dateTime, venue, price, category });
+  const [editedEvent, setEditedEvent] = useState({
+    title,
+    description,
+    dateTime,
+    venue,
+    price,
+    category,
+  });
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      if (!_id || price === 0 || isOrganizer) return;
+      
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/events/${_id}/payment-status`,
+          { withCredentials: true }
+        );
+        setUserHasPaid(response.data.hasPaid);
+      } catch (error) {
+        console.error("Error checking payment status:", error);
+        setUserHasPaid(false);
+      }
+    };
+    
+    checkPaymentStatus();
+  }, [_id, price, isOrganizer, userInfo?.id]);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setMenuAnchor(event.currentTarget);
@@ -80,7 +132,9 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
 
   const handleEditSave = async () => {
     try {
-      await axios.put(`http://localhost:5000/events/${_id}`, editedEvent, { withCredentials: true });
+      await axios.put(`http://localhost:5000/events/${_id}`, editedEvent, {
+        withCredentials: true,
+      });
       setOpenEditDialog(false);
       window.location.reload();
     } catch (error) {
@@ -103,7 +157,11 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
     if (!_id || isAttending) return;
 
     try {
-      const response = await axios.post(`http://localhost:5000/events/${_id}/attendees`, {}, { withCredentials: true });
+      const response = await axios.post(
+        `http://localhost:5000/events/${_id}/attendees`,
+        {},
+        { withCredentials: true }
+      );
 
       if (response.status === 200) {
         setIsAttending(true);
@@ -115,10 +173,29 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
 
   const startLivestream = async () => {
     try {
-      await axios.post(`http://localhost:5000/events/${_id}/livestream/start`, {}, { withCredentials: true });
+      await axios.post(
+        `http://localhost:5000/events/${_id}/livestream/start`,
+        {},
+        { withCredentials: true }
+      );
       navigate(`/watch/${_id}`);
     } catch (error) {
       console.error("Error starting livestream:", error);
+    }
+  };
+
+  const handleUnlockLivestream = async () => {
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/payments/create-checkout-session`,
+        { amount: price * 100, eventId: _id },
+        { withCredentials: true }
+      );
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      }
+    } catch (error) {
+      console.error("Error unlocking livestream:", error);
     }
   };
 
@@ -128,6 +205,12 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
     const offset = date.getTimezoneOffset() * 60000;
     const localDate = new Date(date.getTime() - offset);
     return localDate.toISOString().slice(0, 16);
+  };
+
+
+  const accessLiveStream = () => {
+    if (!_id) return;
+    navigate(`/watch/${_id}`);
   };
 
   return (
@@ -142,12 +225,19 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
               <IconButton onClick={handleMenuOpen}>
                 <MoreVert />
               </IconButton>
-              <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={handleMenuClose}>
+              <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={handleMenuClose}
+              >
                 <MenuItem onClick={handleEditOpen}>
                   <Edit fontSize="small" style={{ marginRight: 8 }} />
                   Edit
                 </MenuItem>
-                <MenuItem onClick={() => setOpenDialog(true)} style={{ color: "red" }}>
+                <MenuItem
+                  onClick={() => setOpenDialog(true)}
+                  style={{ color: "red" }}
+                >
                   <DeleteOutline fontSize="small" style={{ marginRight: 8 }} />
                   Delete
                 </MenuItem>
@@ -181,35 +271,50 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
             <Button variant="outlined">View Details</Button>
           </Link>
 
-          {liveStreamUrl ? (
-            <a href={liveStreamUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-              <Button variant="contained" color="primary">
-                Join Live
-              </Button>
-            </a>
+          {liveStreamUrl && (isOrganizer || price === 0 || userHasPaid) ? (
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={accessLiveStream}
+            >
+              Join Live
+            </Button>
           ) : (
-            isOrganizer && !ended && (
-              <Button variant="contained" color="secondary" onClick={startLivestream}>
+            isOrganizer &&
+            !ended && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={startLivestream}
+              >
                 Start Stream
               </Button>
             )
           )}
+          {!isOrganizer && price > 0 && !userHasPaid && !ended && (
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleUnlockLivestream}
+            >
+              Unlock Livestream
+            </Button>
+          )}
         </div>
-
-        {!isAttending && !isOrganizer && !ended && (
-          <Button variant="contained" color="success" onClick={handleJoinEvent} fullWidth>
-            Join Event
-          </Button>
-        )}
-
-        {isAttending && !isOrganizer && !ended && (
-          <Button variant="contained" disabled fullWidth>
-            Attending
-          </Button>
-        )}
+        {!isAttending &&
+          !isOrganizer &&
+          !ended &&
+          (price === 0 || userHasPaid) && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleJoinEvent}
+              fullWidth
+            >
+              Join Event
+            </Button>
+          )}
       </CardContent>
-
-      {/* Confirmation Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>Delete Event</DialogTitle>
         <DialogContent>
@@ -224,21 +329,64 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Edit Dialog */}
       <Dialog open={openEditDialog} onClose={handleEditClose}>
         <DialogTitle>Edit Event</DialogTitle>
         <DialogContent>
-          <TextField label="Title" fullWidth margin="dense" value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
-          <TextField label="Description" fullWidth margin="dense" multiline value={editedEvent.description} onChange={(e) => setEditedEvent({ ...editedEvent, description: e.target.value })} />
-          <TextField label="Date" fullWidth margin="dense" type="datetime-local" value={formatDateTimeLocal(editedEvent.dateTime)} onChange={(e) => setEditedEvent({ ...editedEvent, dateTime: e.target.value })} />
-          <TextField label="Venue" fullWidth margin="dense" value={editedEvent.venue} onChange={(e) => setEditedEvent({ ...editedEvent, venue: e.target.value })} />
-          <TextField label="Price" fullWidth margin="dense" type="number" value={editedEvent.price} onChange={(e) => setEditedEvent({ ...editedEvent, price: Number(e.target.value) })} />
+          <TextField
+            label="Title"
+            fullWidth
+            margin="dense"
+            value={editedEvent.title}
+            onChange={(e) =>
+              setEditedEvent({ ...editedEvent, title: e.target.value })
+            }
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            margin="dense"
+            multiline
+            value={editedEvent.description}
+            onChange={(e) =>
+              setEditedEvent({ ...editedEvent, description: e.target.value })
+            }
+          />
+          <TextField
+            label="Date"
+            fullWidth
+            margin="dense"
+            type="datetime-local"
+            value={formatDateTimeLocal(editedEvent.dateTime)}
+            onChange={(e) =>
+              setEditedEvent({ ...editedEvent, dateTime: e.target.value })
+            }
+          />
+          <TextField
+            label="Venue"
+            fullWidth
+            margin="dense"
+            value={editedEvent.venue}
+            onChange={(e) =>
+              setEditedEvent({ ...editedEvent, venue: e.target.value })
+            }
+          />
+          <TextField
+            label="Price"
+            fullWidth
+            margin="dense"
+            type="number"
+            value={editedEvent.price}
+            onChange={(e) =>
+              setEditedEvent({ ...editedEvent, price: Number(e.target.value) })
+            }
+          />
           <FormControl fullWidth margin="dense">
             <InputLabel>Category</InputLabel>
             <Select
               value={editedEvent.category}
-              onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })}
+              onChange={(e) =>
+                setEditedEvent({ ...editedEvent, category: e.target.value })
+              }
             >
               {eventCategories.map((category) => (
                 <MenuItem key={category} value={category}>
@@ -249,8 +397,12 @@ const EventCard = ({ _id, title, description, dateTime, venue, price, category, 
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleEditClose} color="primary">Cancel</Button>
-          <Button onClick={handleEditSave} color="primary">Save</Button>
+          <Button onClick={handleEditClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleEditSave} color="primary">
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
     </Card>

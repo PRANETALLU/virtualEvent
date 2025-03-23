@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
-import { Container, Typography, Paper, CircularProgress, Box, Button, List, ListItem, Divider } from "@mui/material";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Container,
+  Typography,
+  Paper,
+  CircularProgress,
+  Box,
+  Button,
+  List,
+  ListItem,
+} from "@mui/material";
+import { useUser } from "../context/UserContext";
 
 interface Attendee {
   _id: string;
@@ -31,6 +41,9 @@ const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [userHasPaid, setUserHasPaid] = useState<boolean>(false);
+  const { userInfo } = useUser();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -45,6 +58,49 @@ const EventDetails = () => {
     };
     fetchEventDetails();
   }, [eventId]);
+
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      if (!eventId || !event || event.price === 0 || 
+          (userInfo && userInfo.id === event.organizer._id)) return;
+      
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/events/${eventId}/payment-status`,
+          { withCredentials: true }
+        );
+        setUserHasPaid(response.data.hasPaid);
+      } catch (error) {
+        console.error("Error checking payment status:", error);
+        setUserHasPaid(false);
+      }
+    };
+    
+    if (event) {
+      checkPaymentStatus();
+    }
+  }, [eventId, event, userInfo]);
+
+  const handleUnlockLivestream = async () => {
+    if (!event) return;
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/payments/create-checkout-session`,
+        { amount: event.price * 100, eventId: event._id },
+        { withCredentials: true }
+      );
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      }
+    } catch (error) {
+      console.error("Error unlocking livestream:", error);
+    }
+  };
+
+  const accessLiveStream = () => {
+    if (!eventId) return;
+    navigate(`/watch/${eventId}`);
+  };
 
   if (loading) {
     return (
@@ -63,6 +119,8 @@ const EventDetails = () => {
       </Box>
     );
   }
+
+  const isOrganizer = userInfo && userInfo.id === event.organizer._id;
 
   return (
     <Container maxWidth="md" sx={{ mt: 18, mb: 4 }}>
@@ -91,6 +149,9 @@ const EventDetails = () => {
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             <strong>Category:</strong> {event.category}
           </Typography>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <strong>Organizer:</strong> {event.organizer.username}
+          </Typography>
         </Box>
 
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -114,7 +175,7 @@ const EventDetails = () => {
           )}
         </List>
 
-        {event.liveStreamUrl && (
+        {event.liveStreamUrl && (isOrganizer || event.price === 0 || userHasPaid) ? (
           <Box mt={3} textAlign="center">
             <Typography variant="h5" color="secondary" gutterBottom>
               Live Streaming
@@ -122,14 +183,28 @@ const EventDetails = () => {
             <Button
               variant="contained"
               color="primary"
-              href={event.liveStreamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={accessLiveStream}
               sx={{ mt: 1 }}
             >
               Watch Live Stream
             </Button>
           </Box>
+        ) : (
+          !event.ended && event.price > 0 && !isOrganizer && !userHasPaid && (
+            <Box mt={3} textAlign="center">
+              <Typography variant="h5" color="warning" gutterBottom>
+                Unlock the Livestream
+              </Typography>
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={handleUnlockLivestream}
+                sx={{ mt: 1 }}
+              >
+                Unlock Livestream for ${event.price}
+              </Button>
+            </Box>
+          )
         )}
 
         {event.ended && (
@@ -137,6 +212,27 @@ const EventDetails = () => {
             <Typography variant="h6" color="text.secondary">
               This event has ended.
             </Typography>
+            {(event.price === 0 || userHasPaid) && event.liveStreamUrl && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={accessLiveStream}
+                sx={{ mt: 2 }}
+              >
+                Watch Recording
+              </Button>
+            )}
+            {event.price > 0 && !userHasPaid && !isOrganizer && (
+              <Box mt={2}>
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={handleUnlockLivestream}
+                >
+                  Access Recording for ${event.price}
+                </Button>
+              </Box>
+            )}
           </Box>
         )}
       </Paper>
