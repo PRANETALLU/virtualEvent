@@ -3,7 +3,8 @@ import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { useNavigate, useParams } from "react-router-dom";
 import Chat from "../components/Chat";
-import { Box, Button, Card, CardContent, Typography, CircularProgress } from "@mui/material";
+import { Box, Button, Card, CardContent, Typography, CircularProgress, IconButton } from "@mui/material";
+import { Mic, MicOff, Videocam, VideocamOff } from '@mui/icons-material';
 
 interface Attendee {
   _id: string;
@@ -534,12 +535,12 @@ const LiveStream = () => {
                 End Stream
               </Button>
               <Box display="flex" gap={2} mt={2}>
-                <Button variant="contained" onClick={toggleMic}>
-                  {isMicOn ? "Mute Mic" : "Unmute Mic"}
-                </Button>
-                <Button variant="contained" onClick={toggleVideo}>
-                  {isVideoOn ? "Turn Off Video" : "Turn On Video"}
-                </Button>
+                <IconButton onClick={toggleMic} color={isMicOn ? "primary" : "default"}>
+                  {isMicOn ? <Mic /> : <MicOff />}
+                </IconButton>
+                <IconButton onClick={toggleVideo} color={isVideoOn ? "primary" : "default"}>
+                  {isVideoOn ? <Videocam /> : <VideocamOff />}
+                </IconButton>
               </Box>
               <Typography variant="subtitle1" mt={2}>Preview</Typography>
               <Box
