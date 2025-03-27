@@ -44,6 +44,7 @@ const App: React.FC = () => {
           <Route path="/events/:eventId" element={<PrivateRoute><EventDetails /></PrivateRoute>} />
           <Route path="/watch/:eventId" element={<PrivateRoute><LiveStream /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/recommendations" element={<PrivateRoute><Recommendations /></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} /> 
 
           {/*Wrapper */}

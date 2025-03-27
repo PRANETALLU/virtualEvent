@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Event = require("../models/Event");
 require('dotenv').config();
 
 const secret = process.env.SECRET_KEY; // Ideally, use environment variables for sensitive data
@@ -120,6 +121,26 @@ exports.updatePreferences = async (req, res) => {
     res.json({ message: "Preferences updated successfully", user: updatedUser });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+exports.getRecommendations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find events that match the user's interests
+    const recommendations = await Event.find({
+      tags: { $in: user.interests },
+    }).limit(10);
+
+    res.json(recommendations);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch recommendations", error: error.message });
   }
 };
 
