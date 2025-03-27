@@ -7,6 +7,7 @@ interface User {
   username?: string;
   email?: string;
   token?: string;
+  avatar?: string;
 }
 
 // Define the context type
