@@ -6,6 +6,7 @@ import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
+import Recommendations from "./pages/Recommendations";
 import EventDetails from "./pages/EventDetails";
 import { Header } from "./components/Header";
 import Search from "./pages/Search";
