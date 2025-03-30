@@ -144,3 +144,47 @@ exports.getRecommendations = async (req, res) => {
   }
 };
 
+const path = require('path');
+const fs = require('fs');
+
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { bio, interests } = req.body;
+    let avatar;
+
+    if (req.file) {
+      const avatarPath = path.join(__dirname, '../uploads/avatars', req.file.filename);
+      avatar = `/uploads/avatars/${req.file.filename}`;
+      
+      // Delete old avatar file if it exists
+      if (req.user.avatar) {
+        const oldAvatarPath = path.join(__dirname, '..', req.user.avatar);
+        if (fs.existsSync(oldAvatarPath)) {
+          fs.unlinkSync(oldAvatarPath);
+        }
+      }
+    }
+
+    const updatedFields = {
+      bio,
+      interests: interests ? interests.split(',').map(i => i.trim()) : undefined,
+    };
+    if (avatar) updatedFields.avatar = avatar;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      updatedFields,
+      { new: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

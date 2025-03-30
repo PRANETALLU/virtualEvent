@@ -13,21 +13,104 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const Event = require('./models/Event');
+const User = require('./models/User');
 require("dotenv").config();
+
+
+const app = express();
+const server = http.createServer(app);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // For handling form data
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve uploaded files
 
 mongoose.connect(process.env.MONGO_URI);
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 db.once("open", () => console.log("MongoDB connected"));
 
-const app = express();
-const server = http.createServer(app);
 
 const baseUploadDir = path.join(__dirname, "uploads");
+// Create avatars directory
+const avatarsDir = path.join(__dirname, "uploads", "avatars");
+
 
 if (!fs.existsSync(baseUploadDir)) {
   fs.mkdirSync(baseUploadDir);
 }
+
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir, { recursive: true });
+}
+
+// Configure multer for avatar uploads
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, avatarsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+// Add before WebSocket setup
+app.put('/user/:id/profile', avatarUpload.single('avatar'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { bio, interests } = req.body;
+    
+    const updateFields = {
+      bio: bio || '',
+      interests: interests ? interests.split(',').map(i => i.trim()) : []
+    };
+
+    if (req.file) {
+      // Delete old avatar if exists
+      const user = await User.findById(id);
+      if (user && user.avatar) {
+        const oldAvatarPath = path.join(__dirname, user.avatar);
+        if (fs.existsSync(oldAvatarPath)) {
+          fs.unlinkSync(oldAvatarPath);
+        }
+      }
+      updateFields.avatar = `/uploads/avatars/${req.file.filename}`;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      updateFields,
+      { new: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Error updating profile', error: error.message });
+  }
+});
+
+
+
+
 
 // WebSocket server setup
 const wss = new WebSocket.Server({ noServer: true });
@@ -123,6 +206,22 @@ app.get("/view-file/:eventId/:fileName", (req, res) => {
     res.status(500).json({ error: "Failed to view file" });
   }
 });
+
+// Add before routes
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ 
+      message: "File upload error", 
+      error: err.message 
+    });
+  }
+  res.status(500).json({ 
+    message: "Internal server error", 
+    error: err.message 
+  });
+});
+
 
 // Routes
 app.use("/user", userRoutes);
@@ -514,3 +613,7 @@ wss.on("close", () => {
 });
 
 server.listen(5000, () => console.log(`Server running on port 5000`));
+
+
+
+
