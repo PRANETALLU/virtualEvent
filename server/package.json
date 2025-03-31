@@ -31,7 +31,10 @@
     "ws": "^8.18.1"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "roots": [
+      ""
+    ]
   },
   "devDependencies": {
     "jest": "^29.7.0",
