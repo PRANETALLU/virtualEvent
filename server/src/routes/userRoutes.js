@@ -8,7 +8,9 @@ const {
   getUserInfo, 
   updatePreferences, 
   getRecommendations, 
-  updateUserProfile 
+  updateUserProfile,
+  forgotPassword,
+  resetPassword
 } = require('../controllers/userController');
 
 // Configure multer for avatar uploads

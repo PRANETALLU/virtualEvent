@@ -114,6 +114,13 @@ const Login = () => {
         >
           {loading ? <CircularProgress size={24} color="inherit" /> : "LOG IN"}
         </Button>
+        <Typography
+          variant="body2"
+          sx={{ color: "#00cfff", cursor: "pointer", textAlign: "right" }}
+          onClick={() => navigate("/forgot-password")}
+        >
+          Forgot your password?
+        </Typography>
       </Box>
       <Typography variant="body1" mt={3}>
         Don't have an account?{" "}
