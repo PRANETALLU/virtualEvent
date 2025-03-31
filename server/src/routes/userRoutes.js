@@ -43,5 +43,8 @@ router.post('/signup', signup);
 router.post('/logout', logout);
 router.get('/:id', getUserInfo);
 router.put('/:id/preferences', updatePreferences);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+
 
 module.exports = router;

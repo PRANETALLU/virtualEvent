@@ -12,6 +12,8 @@ import { Header } from "./components/Header";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
 import Payments from './pages/Payments';
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Notifications from './pages/Notifications'; 
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -39,6 +41,8 @@ const App: React.FC = () => {
           <Route path="/signup" element={<RedirectRoute><Signup /></RedirectRoute>} />
           <Route path="/login" element={<RedirectRoute><Login /></RedirectRoute>} />
 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           {/* Protected routes */}
           <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Search /></PrivateRoute>} />
@@ -47,6 +51,8 @@ const App: React.FC = () => {
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/recommendations" element={<PrivateRoute><Recommendations /></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} /> 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/*Wrapper */}
           <Route
