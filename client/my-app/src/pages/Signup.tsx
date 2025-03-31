@@ -58,6 +58,7 @@ const Signup = () => {
         }}
       >
         <TextField
+          name="username"
           label="Username"
           variant="outlined"
           fullWidth
@@ -74,6 +75,7 @@ const Signup = () => {
           }}
         />
         <TextField
+          name="email"
           label="Email"
           type="email"
           variant="outlined"
@@ -91,6 +93,7 @@ const Signup = () => {
           }}
         />
         <TextField
+          name="password"
           label="Password"
           type="password"
           variant="outlined"
