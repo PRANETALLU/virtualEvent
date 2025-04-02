@@ -64,6 +64,8 @@ const Home: React.FC = () => {
   const { userInfo } = useUser();
   const navigate = useNavigate();
 
+  console.log('UserInfo', userInfo)
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -99,10 +101,10 @@ const Home: React.FC = () => {
   };
 
   const now = new Date();
-  const yourEvents = events.filter((event) => event.organizer._id == userInfo?.id && !event.ended);
+  const yourEvents = events.filter((event) => event.organizer?._id == userInfo?.id && !event.ended);
   const upcomingEvents = events.filter((event) => new Date(event.dateTime) > now && event.attendees.some(attendee => attendee._id === userInfo?.id) && !event.ended);   // Upcoming events to attend
   const inProgressEvents = events.filter((event) => new Date(event.dateTime) <= now && event.attendees.some(attendee => attendee._id === userInfo?.id) && !event.ended); // Events to attend on time
-  const completedEvents = events.filter((event) => (event.organizer._id === userInfo?.id || event.attendees.some(attendee => attendee._id === userInfo?.id)) && event.ended); // Attended events that are completed and also events that are created
+  const completedEvents = events.filter((event) => (event.organizer?._id === userInfo?.id || event.attendees.some(attendee => attendee._id === userInfo?.id)) && event.ended); // Attended events that are completed and also events that are created
 
   return (
     <Box sx={{

@@ -37,6 +37,7 @@ const Login = () => {
 
     } catch (error) {
       setError("Invalid username or password");
+      console.log('Login Error', error)
     } finally {
       setLoading(false);
     }

@@ -120,7 +120,7 @@ const EventDetails = () => {
     );
   }
 
-  const isOrganizer = userInfo && userInfo.id === event.organizer._id;
+  const isOrganizer = userInfo && userInfo.id === event.organizer?._id;
 
   return (
     <Container maxWidth="md" sx={{ mt: 18, mb: 4 }}>
@@ -150,7 +150,7 @@ const EventDetails = () => {
             <strong>Category:</strong> {event.category}
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            <strong>Organizer:</strong> {event.organizer.username}
+            <strong>Organizer:</strong> {event.organizer?.username}
           </Typography>
         </Box>
 
