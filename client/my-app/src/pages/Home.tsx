@@ -51,6 +51,7 @@ const eventCategories = [
 
 const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [open, setOpen] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({
@@ -64,7 +65,7 @@ const Home: React.FC = () => {
   const { userInfo } = useUser();
   const navigate = useNavigate();
 
-  console.log('UserInfo', userInfo)
+  console.log('Recommended Events', recommendedEvents)
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -77,8 +78,24 @@ const Home: React.FC = () => {
         setLoading(false);
       }
     };
+
+    const fetchRecommendations = async () => {
+      if (userInfo?.id) {
+        try {
+          const { data } = await axios.get(`http://localhost:5000/user/${userInfo.id}/recommendations`);
+          setRecommendedEvents(data);
+        } catch (error) {
+          console.error("Error fetching recommendations:", error);
+        }
+      }
+    };
+
     fetchEvents();
-  }, []);
+    fetchRecommendations();
+    setLoading(false);
+  }, [userInfo]);
+
+
 
   const handleCreateEvent = async () => {
     try {
@@ -265,6 +282,36 @@ const Home: React.FC = () => {
           </Box>
         ) : (
           <Stack spacing={8}>
+            {recommendedEvents.length > 0 && (
+              <Box>
+                <Typography
+                  variant="h4"
+                  color="primary"
+                  sx={{
+                    mb: 4,
+                    fontWeight: 'bold',
+                    textAlign: { xs: 'left', sm: 'center' }
+                  }}
+                >
+                  Recommended Events
+                </Typography>
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)'
+                  },
+                  gap: 3
+                }}>
+                  {recommendedEvents.map((event) => (
+                    <Box key={event._id}>
+                      <EventCard {...event} onDelete={handleDeleteEvent} />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
             {[
               { title: "Your Events", events: yourEvents, color: "primary" },
               { title: "Upcoming Events", events: upcomingEvents, color: "success" },

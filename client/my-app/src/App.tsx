@@ -42,7 +42,7 @@ const App: React.FC = () => {
           <Route path="/login" element={<RedirectRoute><Login /></RedirectRoute>} />
 
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Protected routes */}
           <Route path="/home" element={<PrivateRoute><Home /></PrivateRoute>} />
           <Route path="/search" element={<PrivateRoute><Search /></PrivateRoute>} />
@@ -52,7 +52,7 @@ const App: React.FC = () => {
           <Route path="/recommendations" element={<PrivateRoute><Recommendations /></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} /> 
           <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/*Wrapper */}
           <Route
