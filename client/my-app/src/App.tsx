@@ -11,6 +11,7 @@ import EventDetails from "./pages/EventDetails";
 import { Header } from "./components/Header";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
+import About from "./pages/About";
 import Payments from './pages/Payments';
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -40,7 +41,7 @@ const App: React.FC = () => {
           <Route path="/" element={<RedirectRoute><Welcome /></RedirectRoute>} />
           <Route path="/signup" element={<RedirectRoute><Signup /></RedirectRoute>} />
           <Route path="/login" element={<RedirectRoute><Login /></RedirectRoute>} />
-
+          <Route path="/about" element={<About />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           {/* Protected routes */}
