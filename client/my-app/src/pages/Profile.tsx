@@ -1,106 +1,80 @@
-import React, { useState } from "react";
-import { useUser } from "../context/UserContext";
-import axios from "axios";
-import defaultAvatar from "./default.jpg";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Container, Avatar, Typography, Checkbox, FormControlLabel, Button, Paper, Box } from '@mui/material';
+import { useUser } from '../context/UserContext';
+
+const eventCategories = [
+  "Music", "Arts", "Sports", "Tech", "Business", "Education",
+  "Food", "Health", "Community", "Travel", "Gaming", "Other"
+];
+
+type User = {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  bio?: string;
+  preferences?: string[];  // Made optional to prevent `undefined.includes()`
+  interests?: string[];
+};
 
 const Profile: React.FC = () => {
-  const { userInfo, setUserInfo } = useUser();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [bio, setBio] = useState(userInfo?.bio || "");
-  const [interests, setInterests] = useState(userInfo?.interests?.join(", ") || "");
-  const [avatar, setAvatar] = useState<File | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
+  const { userInfo } = useUser();
+  const userId = userInfo?.id; 
 
-  const handleSave = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const formData = new FormData();
-      if (avatar) {
-        formData.append("avatar", avatar);
-      }
-      formData.append("bio", bio);
-      formData.append("interests", interests);
+  useEffect(() => {
+    if (!userId) return;
+    axios.get(`http://localhost:5000/user/${userId}`)
+      .then(response => {
+        setUser(response.data);
+        setSelectedPreferences(response.data.preferences ?? []); // Ensure preferences is an array
+      })
+      .catch(error => console.error("Error fetching user data:", error));
+  }, [userId]);
 
-      const { data } = await axios.put(
-        `http://localhost:5000/user/${userInfo?.id}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${userInfo?.token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      setUserInfo((prev) => ({
-        ...prev,
-        bio: data.bio,
-        interests: data.interests,
-        avatar: data.avatar,
-      }));
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setError("Failed to update profile. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handlePreferenceChange = (preference: string) => {
+    setSelectedPreferences(prev =>
+      prev.includes(preference) ? prev.filter(p => p !== preference) : [...prev, preference]
+    );
   };
 
-  const handleCancel = () => {
-    setBio(userInfo?.bio || "");
-    setInterests(userInfo?.interests?.join(", ") || "");
-    setAvatar(null);
-    setError(null);
-    setIsEditing(false);
+  const savePreferences = () => {
+    if (!userId) return;
+    axios.put(`http://localhost:5000/user/${userId}/preferences`, { preferences: selectedPreferences })
+      .then(response => {
+        setUser(response.data.user);
+        alert("Preferences updated successfully!");
+      })
+      .catch(error => console.error("Error updating preferences:", error));
   };
 
-  if (!userInfo) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
+  if (!user) return <Typography>Loading...</Typography>;
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
-        {error && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+    <Container maxWidth="sm" sx={{ paddingTop: "80px" }}>
+      <Paper elevation={3} sx={{ padding: '20px', textAlign: 'center' }}>
+        <Avatar src={user.avatar || "/default-avatar.png"} alt="Avatar" sx={{ width: 80, height: 80, margin: 'auto' }} />
+        <Typography variant="h5" sx={{ marginTop: 2 }}>{user.username}</Typography>
+        <Typography variant="body2" color="textSecondary">{user.email}</Typography>
+        <Typography variant="body1" sx={{ marginTop: 1 }}>{user.bio || "No bio available."}</Typography>
         
-        {/* Rest of your JSX remains the same, but update the Cancel button onClick */}
-        <div className="mt-6 flex justify-end">
-          {isEditing ? (
-            <>
-              <button
-                onClick={handleCancel}
-                disabled={isLoading}
-                className="px-4 py-2 bg-gray-500 text-white rounded mr-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isLoading}
-                className="px-4 py-2 bg-blue-500 text-white rounded"
-              >
-                {isLoading ? "Saving..." : "Save"}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded"
-            >
-              Edit Profile
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+        <Typography variant="h6" sx={{ marginTop: 3 }}>Preferences</Typography>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+          {eventCategories.map(pref => (
+            <FormControlLabel
+              key={pref}
+              control={<Checkbox checked={selectedPreferences.includes(pref)} onChange={() => handlePreferenceChange(pref)} />}
+              label={pref}
+            />
+          ))}
+        </Box>
+        <Button onClick={savePreferences} variant="contained" color="primary" sx={{ marginTop: 2 }}>
+          Save Preferences
+        </Button>
+      </Paper>
+    </Container>
   );
 };
 
