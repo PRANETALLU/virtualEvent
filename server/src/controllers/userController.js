@@ -6,16 +6,19 @@ require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true for port 465, false for 587
+  service: 'gmail', 
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER, 
+    pass: process.env.EMAIL_PASS, 
   },
+  tls: {
+    rejectUnauthorized: false, 
+  },
+  logger: true, 
+  debug: true, 
 });
 
-const secret = process.env.SECRET_KEY; // Ideally, use environment variables for sensitive data
+const secret = process.env.SECRET_KEY; 
 
 // Sign up logic
 exports.signup = async (req, res) => {
@@ -103,6 +106,7 @@ exports.getUserInfo = async (req, res) => {
       avatar: user.avatar,
       bio: user.bio,
       interests: user.interests,
+      preferences: user.preferences
     });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -144,10 +148,11 @@ exports.getRecommendations = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find events that match the user's interests
+    // Find events that match the user's preferences
     const recommendations = await Event.find({
-      tags: { $in: user.interests },
-    }).limit(10);
+      category: { $in: user.preferences }, 
+      ended: false,
+    }).limit(10); // Limit to 10 recommended events
 
     res.json(recommendations);
   } catch (error) {
@@ -215,7 +220,20 @@ exports.forgotPassword = async (req, res) => {
 
     // Send email with reset link
     const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
+
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error("Transporter Error:", error);
+      } else {
+        console.log("Transporter is ready to send emails");
+      }
+    });
+
+    console.log('from', process.env.EMAIL_USER)
+    console.log('to', user.email)
+
     await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: user.email,
       subject: "Password Reset Request",
       html: `<p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`
