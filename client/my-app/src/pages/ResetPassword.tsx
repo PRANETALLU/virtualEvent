@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import queryString from "query-string";
 import { TextField, Button, Container, Typography, Box, Alert } from "@mui/material";
 import axios from "axios";
 
 const ResetPassword = () => {
-  const { token } = useParams<{ token: string }>();
+  //const { token } = useParams<{ token: string }>();
+  const { token } = queryString.parse(location.search);
   const navigate = useNavigate();
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [message, setMessage] = useState<string>("");
+
+  console.log("Parse token", token)
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +22,10 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/${token}`, { password });
+      const response = await axios.post(`http://localhost:5000/user/reset-password`, { 
+        token,
+        newPassword: password 
+      });
       setMessage(response.data.message);
       setTimeout(() => navigate("/login"), 3000);
     } catch (error) {
