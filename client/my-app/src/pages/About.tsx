@@ -1,31 +1,53 @@
 import React from "react";
-import { Container, Typography, Box, Paper, Grid, Card, CardContent, Divider } from "@mui/material";
+import { Container, Typography, Box, Paper, Grid, Card, CardContent, Divider, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import EventIcon from "@mui/icons-material/Event";
 import StreamIcon from "@mui/icons-material/Stream";
 import GroupIcon from "@mui/icons-material/Group";
 import ChatIcon from "@mui/icons-material/Chat";
+import SecurityIcon from '@mui/icons-material/Security';
+import SpeedIcon from '@mui/icons-material/Speed';
+import DevicesIcon from '@mui/icons-material/Devices';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const About: React.FC = () => {
   const features = [
     {
       icon: <EventIcon sx={{ fontSize: 40, color: "#2196F3" }} />,
       title: "Event Management",
-      description: "Create and manage virtual events with ease. Set event details, manage attendees, and track engagement."
+      description: "Create and manage virtual events with ease. Set event details, manage attendees, and track engagement. Schedule events, send invitations, and monitor participation in real-time."
     },
     {
       icon: <StreamIcon sx={{ fontSize: 40, color: "#4CAF50" }} />,
       title: "Live Streaming",
-      description: "High-quality WebRTC-based live streaming with real-time video and audio broadcasting capabilities."
+      description: "High-quality WebRTC-based live streaming with real-time video and audio broadcasting. Support for multiple participants, screen sharing, and adaptive bitrate streaming."
     },
     {
       icon: <GroupIcon sx={{ fontSize: 40, color: "#9C27B0" }} />,
       title: "Community",
-      description: "Connect with like-minded individuals, participate in events, and build meaningful relationships."
+      description: "Connect with like-minded individuals, participate in events, and build meaningful relationships. Create profiles, join interest groups, and network with other participants."
     },
     {
       icon: <ChatIcon sx={{ fontSize: 40, color: "#FF9800" }} />,
       title: "Real-time Interaction",
-      description: "Engage with participants through real-time chat, polls, and interactive features."
+      description: "Engage with participants through real-time chat, polls, Q&A sessions, and interactive features. Support for emoji reactions, file sharing, and private messaging."
+    }
+  ];
+
+  const benefits = [
+    {
+      title: "High Performance",
+      description: "Optimized for low latency and high-quality streaming",
+      icon: <SpeedIcon color="primary" />
+    },
+    {
+      title: "Cross-Platform",
+      description: "Works seamlessly across desktop and mobile devices",
+      icon: <DevicesIcon color="primary" />
+    },
+    {
+      title: "Secure",
+      description: "End-to-end encryption and secure authentication",
+      icon: <SecurityIcon color="primary" />
     }
   ];
 
@@ -69,6 +91,24 @@ const About: React.FC = () => {
             provides a seamless experience for organizing and attending virtual events, making 
             it easier than ever to bring people together regardless of physical location.
           </Typography>
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Why Choose Our Platform?
+            </Typography>
+            <List>
+              {benefits.map((benefit, index) => (
+                <ListItem key={index}>
+                  <ListItemIcon>
+                    {benefit.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={benefit.title}
+                    secondary={benefit.description}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         </Paper>
 
         {/* Features Grid */}
@@ -111,28 +151,92 @@ const About: React.FC = () => {
           <Typography variant="h4" gutterBottom sx={{ fontWeight: "medium" }}>
             Built with Modern Technology
           </Typography>
-          <Grid container spacing={2}>
+          <Grid container spacing={4}>
             <Grid item xs={12} md={6}>
               <Typography variant="h6" gutterBottom color="primary">
-                Frontend
+                Frontend Technologies
               </Typography>
-              <Typography variant="body1" paragraph>
-                • React.js with TypeScript<br />
-                • Material-UI for sleek design<br />
-                • WebRTC for live streaming<br />
-                • Real-time WebSocket communication
-              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="React.js with TypeScript"
+                    secondary="Modern, type-safe frontend development"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Material-UI Components"
+                    secondary="Sleek, responsive design system"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="WebRTC Integration"
+                    secondary="High-quality real-time communication"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="WebSocket Client"
+                    secondary="Real-time data synchronization"
+                  />
+                </ListItem>
+              </List>
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="h6" gutterBottom color="primary">
-                Backend
+                Backend Infrastructure
               </Typography>
-              <Typography variant="body1" paragraph>
-                • Node.js/Express.js<br />
-                • MongoDB for data storage<br />
-                • WebSocket server for real-time features<br />
-                • JWT authentication
-              </Typography>
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Node.js/Express.js"
+                    secondary="Scalable server architecture"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="MongoDB Database"
+                    secondary="Flexible data storage and retrieval"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="WebSocket Server"
+                    secondary="Bi-directional real-time communication"
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircleIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="JWT Authentication"
+                    secondary="Secure user authentication and authorization"
+                  />
+                </ListItem>
+              </List>
             </Grid>
           </Grid>
         </Paper>
