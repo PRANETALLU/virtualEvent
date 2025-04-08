@@ -16,6 +16,7 @@ import Payments from './pages/Payments';
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from './pages/Notifications'; 
+import Team from './pages/Team.tsx';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -42,6 +43,7 @@ const App: React.FC = () => {
           <Route path="/signup" element={<RedirectRoute><Signup /></RedirectRoute>} />
           <Route path="/login" element={<RedirectRoute><Login /></RedirectRoute>} />
           <Route path="/about" element={<About />} />
+          <Route path="/team" element={<Team />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           {/* Protected routes */}
