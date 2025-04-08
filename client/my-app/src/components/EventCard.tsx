@@ -186,6 +186,15 @@ const EventCard = ({
 
   const handleUnlockLivestream = async () => {
     try {
+      const response1 = await axios.post(
+        `http://localhost:5000/events/${_id}/attendees`,
+        {},
+        { withCredentials: true }
+      );
+
+      if (response1.status === 200) {
+        setIsAttending(true);
+      }
       const response = await axios.post(
         `http://localhost:5000/api/payments/create-checkout-session`,
         { amount: price * 100, eventId: _id },
