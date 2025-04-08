@@ -214,7 +214,7 @@ const Search = () => {
     }
 
     setFilteredEvents(results);
-  }, [searchQuery, selectedTab, priceFilter, dateFilter, events]);
+  }, [searchQuery, selectedTab, priceFilter, dateFilter, statusFilter, events]);
 
   const handleDeleteEvent = async (deletedEventId: string) => {
     try {
