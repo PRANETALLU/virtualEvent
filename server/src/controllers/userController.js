@@ -152,6 +152,7 @@ exports.getRecommendations = async (req, res) => {
     const recommendations = await Event.find({
       category: { $in: user.preferences }, 
       ended: false,
+      attendees: { $ne: user._id }
     }).limit(10); // Limit to 10 recommended events
 
     res.json(recommendations);
