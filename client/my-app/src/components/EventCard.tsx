@@ -98,11 +98,17 @@ const EventCard = ({
   useEffect(() => {
     const checkPaymentStatus = async () => {
       if (!_id || price === 0 || isOrganizer) return;
-      
+  
       try {
-        const response = await axios.get(
-          `http://localhost:5000/events/${_id}/payment-status`,
-          { withCredentials: true }
+        const response = await axios.post(
+          `http://localhost:5000/api/payments/payment-status`, 
+          { 
+            eventId: _id,  
+            userId: userInfo?.id 
+          },
+          {
+            withCredentials: true, 
+          }
         );
         setUserHasPaid(response.data.hasPaid);
       } catch (error) {
@@ -110,7 +116,7 @@ const EventCard = ({
         setUserHasPaid(false);
       }
     };
-    
+  
     checkPaymentStatus();
   }, [_id, price, isOrganizer, userInfo?.id]);
 
@@ -186,18 +192,9 @@ const EventCard = ({
 
   const handleUnlockLivestream = async () => {
     try {
-      const response1 = await axios.post(
-        `http://localhost:5000/events/${_id}/attendees`,
-        {},
-        { withCredentials: true }
-      );
-
-      if (response1.status === 200) {
-        setIsAttending(true);
-      }
       const response = await axios.post(
-        `http://localhost:5000/api/payments/create-checkout-session`,
-        { amount: price * 100, eventId: _id },
+        `http://localhost:5000/api/payments/checkout`,
+        { amount: price * 100, eventId: _id, userId: userInfo?.id},
         { withCredentials: true }
       );
       if (response.data.url) {
