@@ -19,6 +19,7 @@ import Notifications from './pages/Notifications';
 import Team from './pages/Team.tsx';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
@@ -54,6 +55,8 @@ const App: React.FC = () => {
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/recommendations" element={<PrivateRoute><Recommendations /></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} /> 
+          <Route path="/payment-success" element={<PrivateRoute><PaymentSuccess /></PrivateRoute>} />
+          
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
