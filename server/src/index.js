@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes");
 const eventRoutes = require("./routes/eventRoutes");
-const paymentRoutes = require("./controllers/paymentRouting");
+const paymentRoutes = require("./routes/paymentRoutes");
 const notificationRoutes = require("./routes/notificationsRoutes");
 const http = require("http");
 const WebSocket = require("ws");
@@ -14,6 +14,7 @@ const path = require("path");
 const fs = require("fs");
 const Event = require('./models/Event');
 const User = require('./models/User');
+const webhookRoutes = require('./webhook');
 require("dotenv").config();
 
 
@@ -228,6 +229,7 @@ app.use("/user", userRoutes);
 app.use("/events", eventRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
+//app.use('/webhook', webhookRoutes);
 
 // WebSocket connection handler
 wss.on("connection", (ws, req) => {
