@@ -14,7 +14,6 @@ const path = require("path");
 const fs = require("fs");
 const Event = require('./models/Event');
 const User = require('./models/User');
-const webhookRoutes = require('./webhook');
 require("dotenv").config();
 
 
