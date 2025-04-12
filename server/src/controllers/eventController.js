@@ -3,6 +3,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const fs = require("fs");
 const path = require("path");
+const { sendEmail } = require('../services/emailService');
 require('dotenv').config();
 
 /*const secret = process.env.SECRET_KEY;
@@ -13,18 +14,16 @@ const verifyToken = require('../middleware/authMiddleware');*/
 // Create Event
 exports.createEvent = async (req, res) => {
   const { title, description, dateTime, venue, price, category } = req.body;
-  console.log('Intro')
+  console.log('Intro');
   try {
-
-    // Verify we have a user before proceeding
-    console.log('User', req.user, req.user.id)
+    console.log('User', req.user, req.user.id);
     if (!req.user || !req.user.id) {
       return res.status(401).json({
         message: 'Unauthorized - No valid user found'
       });
     }
-
-    console.log('Backend 1')
+    
+    console.log('Backend 1');
     const newEvent = new Event({
       title,
       description,
@@ -32,18 +31,26 @@ exports.createEvent = async (req, res) => {
       venue,
       price,
       category,
-      organizer: req.user.id,  // Make sure this is getting set
+      organizer: req.user.id,  
       attendees: [req.user.id]
     });
-    console.log('Backend 2')
-
+    console.log('Backend 2');
     const savedEvent = await newEvent.save();
+    const organizer = await User.findById(req.user.id);
+    if (organizer && organizer.email) {
+      const emailHtml = `Hello ${organizer.username || ''},
+      You have successfully created the event " ${title} ".`;
+      await sendEmail(organizer.email, 'Streamify Event Created Successfully', emailHtml);
+      console.log("Email notification sent to", organizer.email);
+    } else {
+      console.log("Organizer email not found");
+    }
     
     res.status(201).json({
       message: 'Event created successfully',
       event: savedEvent
     });
-
+    
   } catch (err) {
     console.error('Detailed error:', err);
     res.status(500).json({
