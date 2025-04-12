@@ -2,6 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const Event = require('../models/Event');
+const { sendEmail } = require('../services/emailService');
 
 exports.createCheckoutSession = async (req, res) => {
   const { amount, eventId, userId } = req.body;
@@ -41,44 +42,45 @@ exports.createCheckoutSession = async (req, res) => {
 exports.handleCheckoutSuccess = async (req, res) => {
   try {
     const { session_id } = req.query;
-
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(session_id);
-
+    
     // Ensure the session is paid
     if (session.payment_status === 'paid') {
       const userId = session.metadata.userId;
       const eventId = session.metadata.eventId;
-      const amount = session.amount_total / 100; // Convert from cents to dollars
+      const amount = session.amount_total / 100; 
       const stripePaymentId = session.payment_intent;
-
-      // Ensure the user and event exist
       const user = await User.findById(userId);
       const eventObj = await Event.findById(eventId);
 
       if (!user || !eventObj) {
-        return res.status(400).json({ error: 'Invalid user or event' });
+        return res.status(400).json({ message: "Invalid user or event" });
       }
-
-      // Create a new payment object
       const payment = new Payment({
         user: userId,
         event: eventId,
         amount,
         stripePaymentId,
       });
-
       await payment.save();
       console.log('Payment successfully recorded:', payment);
-
-      // Respond with the payment confirmation
-      res.status(200).json({ message: 'Payment successful', payment });
+      if (user.email) {
+        const emailHtml = `Hello ${user.username || ''},
+                           Your payment for the event "${eventObj.title}" has been successfully processed. You now have access to join the event.
+                           Thank you for your payment!`;
+        await sendEmail(user.email, 'Streamify Payment Confirmation', emailHtml);
+        console.log("Payment confirmation email sent to", user.email);
+      } else {
+        console.log("User email not found; email notification not sent.");
+      }
+      return res.status(200).json({ message: 'Payment successful. You can join the event.', payment, hasPaid: true });
     } else {
-      res.status(400).json({ error: 'Payment not completed' });
+      return res.status(400).json({ message: 'Payment not completed' });
     }
   } catch (err) {
-    console.error('Error handling checkout success:', err);
-    res.status(500).send('Internal Server Error');
+    console.error('Error in handleCheckoutSuccess:', err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
