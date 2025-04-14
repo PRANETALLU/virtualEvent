@@ -185,8 +185,10 @@ REDIS_URL=your_redis_url
 - **Sprint 5**: Testing & Refinement (2 weeks)
 
 ## Development Team
-- Tommy Lam Luu: UI/UX Designer, Front End Dev
-
+- Tommy Lam Luu: UI/UX Designer, Front End Dev, Documentation
+- Ansh
+- Pranet
+- Nikhil
 
 ## Testing
 ```bash
