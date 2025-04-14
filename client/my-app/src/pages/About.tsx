@@ -8,6 +8,8 @@ import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import DevicesIcon from '@mui/icons-material/Devices';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
+import Avatar from '@mui/material/Avatar';
 
 const About: React.FC = () => {
   const features = [
@@ -48,6 +50,27 @@ const About: React.FC = () => {
       title: "Secure",
       description: "End-to-end encryption and secure authentication",
       icon: <SecurityIcon color="primary" />
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: "Sarah Johnson",
+      role: "Event Organizer",
+      avatar: "/avatars/sarah.jpg", // You'll need to add actual avatar images
+      quote: "This platform has transformed how we organize virtual conferences. The streaming quality and interactive features are exceptional."
+    },
+    {
+      name: "David Chen",
+      role: "Community Manager",
+      avatar: "/avatars/david.jpg",
+      quote: "The engagement levels we've seen through this platform are remarkable. It's made virtual events feel personal and interactive."
+    },
+    {
+      name: "Emily Brown",
+      role: "Tech Conference Host",
+      avatar: "/avatars/emily.jpg",
+      quote: "Superior technical reliability and customer support. It's become our go-to solution for hosting virtual tech events."
     }
   ];
 
