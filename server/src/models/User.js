@@ -7,7 +7,7 @@ const UserSchema = new mongoose.Schema({
   bio: { type: String, default: "" },
   preferences: { type: [String], default: []},
   interests: { type: [String], default: [] },
-  avatar: { type: String, default: "" } // Avatar URL
+  avatar: { type: String, default: "" } 
 });
 
 module.exports = mongoose.model('User', UserSchema);
