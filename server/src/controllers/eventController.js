@@ -5,22 +5,20 @@ const fs = require("fs");
 const path = require("path");
 const { sendEmail } = require('../services/emailService');
 require('dotenv').config();
+const nodemailer = require('nodemailer');
 
 /*const secret = process.env.SECRET_KEY;
 
 // Middleware for token verification
 const verifyToken = require('../middleware/authMiddleware');*/
 
-// Create Event
 exports.createEvent = async (req, res) => {
   const { title, description, dateTime, venue, price, category } = req.body;
   console.log('Intro');
   try {
     console.log('User', req.user, req.user.id);
     if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        message: 'Unauthorized - No valid user found'
-      });
+      return res.status(401).json({ message: 'Unauthorized - No valid user found' });
     }
     
     console.log('Backend 1');
@@ -31,16 +29,44 @@ exports.createEvent = async (req, res) => {
       venue,
       price,
       category,
-      organizer: req.user.id,  
+      organizer: req.user.id,
       attendees: [req.user.id]
     });
+    
     console.log('Backend 2');
     const savedEvent = await newEvent.save();
     const organizer = await User.findById(req.user.id);
+    
     if (organizer && organizer.email) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail', 
+        auth: {
+          user: process.env.EMAIL_USER, 
+          pass: process.env.EMAIL_PASS, 
+        },
+        tls: {
+          rejectUnauthorized: false, 
+        },
+        logger: true, 
+        debug: true, 
+      });
+      
       const emailHtml = `Hello ${organizer.username || ''},
-      You have successfully created the event " ${title} ".`;
-      await sendEmail(organizer.email, 'Streamify Event Created Successfully', emailHtml);
+        You have successfully created the event " ${title} ".`;
+      transporter.verify((error, success) => {
+        if (error) {
+          console.error("Transporter Error:", error);
+        } else {
+          console.log("Transporter is ready to send emails");
+        }
+      });
+      
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: organizer.email,
+        subject: 'Streamify Event Created Successfully',
+        html: emailHtml,
+      });
       console.log("Email notification sent to", organizer.email);
     } else {
       console.log("Organizer email not found");
