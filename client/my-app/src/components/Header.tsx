@@ -41,9 +41,24 @@ export const Header: React.FC = () => {
           <Link to={userInfo ? "/home" : "/"} style={{ textDecoration: 'none' }}>
             <img src="streamifylogo.png" alt="Streamify Logo" style={{ width: 200, height: "auto" }} />
           </Link>
-          <Link to="/about" style={{ marginLeft: 16, textDecoration: 'none', color: '#000', fontWeight: 500 }}>
+          <Button
+            component={Link}
+            to="/about"
+            sx={{
+              ml: 2,
+              color: "#3f51b5",
+              textTransform: "none",
+              fontWeight: "bold",
+              borderRadius: "20px",
+              px: 2,
+              py: 0.5,
+              "&:hover": {
+                backgroundColor: "#e3f2fd",
+              },
+            }}
+          >
             About
-          </Link>
+          </Button>
         </Box>
         {userInfo && (
           <Box>
