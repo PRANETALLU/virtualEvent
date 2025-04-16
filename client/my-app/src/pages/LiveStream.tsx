@@ -98,7 +98,7 @@ const LiveStream = () => {
       })
       .catch((error) => {
         console.error("Failed to load event details:", error);
-        setStreamingError("Failed to load event details");
+        setStreamingError("Failed to load event details!!");
       });
   }, [eventId, userInfo]);
 
