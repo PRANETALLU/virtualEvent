@@ -221,8 +221,8 @@ npm test
 
 
 ## Acknowledgments
-- Faculty Advisor: [Name]
+- Faculty Advisor: Carol Demas
 
 ## Contact
 For any inquiries, please contact:
-- Faculty Advisor: [Email]
+- Faculty Advisor: demasc@ufl.edu
