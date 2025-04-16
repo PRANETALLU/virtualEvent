@@ -11,6 +11,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import Avatar from '@mui/material/Avatar';
 
+
+// Preview in jinno!, link to main page
 const About: React.FC = () => {
   const features = [
     {
