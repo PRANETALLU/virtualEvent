@@ -41,6 +41,9 @@ export const Header: React.FC = () => {
           <Link to={userInfo ? "/home" : "/"} style={{ textDecoration: 'none' }}>
             <img src="streamifylogo.png" alt="Streamify Logo" style={{ width: 200, height: "auto" }} />
           </Link>
+          <Link to="/about" style={{ marginLeft: 16, textDecoration: 'none', color: '#000', fontWeight: 500 }}>
+            About
+          </Link>
         </Box>
         {userInfo && (
           <Box>
@@ -56,7 +59,7 @@ export const Header: React.FC = () => {
             >
               <MenuItem onClick={() => navigate("/profile")}>Profile</MenuItem>
               <MenuItem onClick={() => navigate("/payments")}>Payments</MenuItem>
-              <MenuItem onClick={() => navigate("/notifications")}>Notifications</MenuItem> 
+              <MenuItem onClick={() => navigate("/notifications")}>Notifications</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
           </Box>
