@@ -46,14 +46,15 @@ export const Header: React.FC = () => {
             to="/about"
             sx={{
               ml: 2,
-              color: "#3f51b5",
-              textTransform: "none",
+              color: "#ffffff",
+              textTransform: "uppercase",
               fontWeight: "bold",
-              borderRadius: "20px",
-              px: 2,
-              py: 0.5,
+              borderRadius: "25px",
+              px: 3,
+              py: 1,
+              backgroundColor: "#3f51b5",
               "&:hover": {
-                backgroundColor: "#e3f2fd",
+                backgroundColor: "#1a237e",
               },
             }}
           >
