@@ -18,6 +18,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import axios from 'axios';
 
+
+// Stream to be fixed
 interface TrendingStream {
   _id: string;
   title: string;
