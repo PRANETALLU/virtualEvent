@@ -74,8 +74,6 @@ export const Header: React.FC = () => {
               onClose={handleMenuClose}
             >
               <MenuItem onClick={() => navigate("/profile")}>Profile</MenuItem>
-              <MenuItem onClick={() => navigate("/payments")}>Payments</MenuItem>
-              <MenuItem onClick={() => navigate("/notifications")}>Notifications</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
           </Box>
