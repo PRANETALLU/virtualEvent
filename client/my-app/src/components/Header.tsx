@@ -9,6 +9,8 @@ const getAvatarColor = (char: string) => {
   return colors[char.charCodeAt(0) % colors.length];
 };
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const Header: React.FC = () => {
   const { userInfo, setUserInfo } = useUser();
   const navigate = useNavigate();
@@ -24,7 +26,7 @@ export const Header: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:5000/user/logout", {}, { withCredentials: true });
+      await axios.post(`${API_URL}/user/logout`, {}, { withCredentials: true });
       setUserInfo(null);
       localStorage.removeItem("userInfo");
       navigate("/");

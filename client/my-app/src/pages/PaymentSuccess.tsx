@@ -12,6 +12,9 @@ interface Payment {
     };
 }
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const PaymentSuccess = () => {
     const [payment, setPayment] = useState<Payment | null>(null); // Explicitly set the type
     const [loading, setLoading] = useState<boolean>(true);
@@ -25,7 +28,7 @@ const PaymentSuccess = () => {
 
             if (sessionId) {
                 try {
-                    const response = await axios.get(`http://localhost:5000/api/payments/success?session_id=${sessionId}`);
+                    const response = await axios.get(`${API_URL}/api/payments/success?session_id=${sessionId}`);
                     setPayment(response.data.payment); // Now TypeScript knows the type of 'payment'
                 } catch (err) {
                     setError('Failed to confirm payment.');

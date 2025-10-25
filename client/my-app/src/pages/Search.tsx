@@ -148,6 +148,9 @@ const categories: Category[] = eventCategories.map((category) => {
   };
 });
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Search = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -161,7 +164,7 @@ const Search = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/events');
+        const { data } = await axios.get(`${API_URL}/events`);
         setEvents(data);
         setFilteredEvents(data);
       } catch (error) {
@@ -218,7 +221,7 @@ const Search = () => {
 
   const handleDeleteEvent = async (deletedEventId: string) => {
     try {
-      await axios.delete(`http://localhost:5000/events/${deletedEventId}`, { withCredentials: true });
+      await axios.delete(`${API_URL}/events/${deletedEventId}`, { withCredentials: true });
       setEvents(prevEvents => prevEvents.filter(event => event._id !== deletedEventId));
     } catch (error) {
       console.error("Error deleting event:", error);

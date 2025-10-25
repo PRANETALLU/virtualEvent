@@ -18,6 +18,9 @@ type User = {
   interests?: string[];
 };
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
@@ -26,7 +29,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (!userId) return;
-    axios.get(`http://localhost:5000/user/${userId}`)
+    axios.get(`${API_URL}/user/${userId}`)
       .then(response => {
         setUser(response.data);
         setSelectedPreferences(response.data.preferences ?? []); // Ensure preferences is an array
@@ -42,7 +45,7 @@ const Profile: React.FC = () => {
 
   const savePreferences = () => {
     if (!userId) return;
-    axios.put(`http://localhost:5000/user/${userId}/preferences`, { preferences: selectedPreferences })
+    axios.put(`${API_URL}/user/${userId}/preferences`, { preferences: selectedPreferences })
       .then(response => {
         setUser(response.data.user);
         alert("Preferences updated successfully!");

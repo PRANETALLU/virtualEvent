@@ -30,6 +30,9 @@ interface Event {
   ended: boolean;
 }
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const LiveStream = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -50,7 +53,7 @@ const LiveStream = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const socket = new WebSocket("ws://localhost:5000/ws");
+    const socket = new WebSocket(`${WS_URL}/ws`);
 
     socket.onopen = () => {
       console.log("WebSocket connected!");
@@ -89,7 +92,7 @@ const LiveStream = () => {
     if (!eventId) return;
 
     axios
-      .get(`http://localhost:5000/events/${eventId}`)
+      .get(`${API_URL}/events/${eventId}`)
       .then((response) => {
         setEvent(response.data);
         const isEventOrganizer = response.data.organizer?._id === userInfo?.id;
@@ -453,7 +456,7 @@ const LiveStream = () => {
 
   const endStreaming = async () => {
     try {
-      await axios.post(`http://localhost:5000/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
+      await axios.post(`${API_URL}/events/${eventId}/livestream/stop`, {}, { withCredentials: true });
       navigate('/home');
     }
     catch (error) {

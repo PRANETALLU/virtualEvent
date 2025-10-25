@@ -4,6 +4,9 @@ import queryString from "query-string";
 import { TextField, Button, Container, Typography, Box, Alert } from "@mui/material";
 import axios from "axios";
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ResetPassword = () => {
   //const { token } = useParams<{ token: string }>();
   const { token } = queryString.parse(location.search);
@@ -22,7 +25,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/user/reset-password`, { 
+      const response = await axios.post(`${API_URL}/user/reset-password`, { 
         token,
         newPassword: password 
       });

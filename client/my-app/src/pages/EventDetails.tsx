@@ -37,6 +37,9 @@ interface EventDetails {
   ended: boolean;
 }
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const EventDetails = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const [event, setEvent] = useState<EventDetails | null>(null);
@@ -48,7 +51,7 @@ const EventDetails = () => {
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/events/${eventId}`);
+        const { data } = await axios.get(`${API_URL}/events/${eventId}`);
         setEvent(data);
       } catch (error) {
         console.error("Error fetching event details:", error);
@@ -66,7 +69,7 @@ const EventDetails = () => {
       
       try {
         const response = await axios.get(
-          `http://localhost:5000/events/${eventId}/payment-status`,
+          `${API_URL}/events/${eventId}/payment-status`,
           { withCredentials: true }
         );
         setUserHasPaid(response.data.hasPaid);
@@ -85,7 +88,7 @@ const EventDetails = () => {
     if (!event) return;
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/payments/create-checkout-session`,
+        `${API_URL}/api/payments/create-checkout-session`,
         { amount: event.price * 100, eventId: event._id },
         { withCredentials: true }
       );

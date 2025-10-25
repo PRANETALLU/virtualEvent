@@ -20,8 +20,8 @@ interface ChatProps {
   eventId: string;
 }
 
-const WS_URL = "ws://localhost:5000/ws";
-const API_URL = "http://localhost:5000"; // Base API URL for file uploads
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL; // Base API URL for file uploads
 
 const Chat: React.FC<ChatProps> = ({ eventId }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);

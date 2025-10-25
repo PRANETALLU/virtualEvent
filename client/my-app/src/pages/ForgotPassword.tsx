@@ -2,6 +2,10 @@ import { useState } from "react";
 import { TextField, Button, Container, Typography, Box, Alert } from "@mui/material";
 import axios from "axios";
 
+
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ForgotPassword = () => {
     const [email, setEmail] = useState<string>("");
     const [message, setMessage] = useState<string>("");
@@ -9,7 +13,7 @@ const ForgotPassword = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await axios.post("http://localhost:5000/user/forgot-password", { email });
+            const response = await axios.post(`${API_URL}/user/forgot-password`, { email });
             setMessage(response.data.message);
         } catch (error) {
             setMessage("Error sending reset email. Please try again.");

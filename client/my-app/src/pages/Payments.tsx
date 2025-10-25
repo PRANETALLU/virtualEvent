@@ -6,6 +6,9 @@ import { Box, Grid, Typography, TextField, Button, Paper, CircularProgress, Aler
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const CheckoutForm: React.FC = () => {
   const stripe = useStripe();
   const elements = useElements();
@@ -25,7 +28,7 @@ const CheckoutForm: React.FC = () => {
 
   useEffect(() => {
     axios
-      .post('http://localhost:5000/api/payments/create-payment-intent', { amount: 1000 })
+      .post(`${API_URL}/api/payments/create-payment-intent`, { amount: 1000 })
       .then(({ data }) => {
         console.log('Client Secret received:', data.clientSecret);
         setClientSecret(data.clientSecret);
@@ -69,7 +72,7 @@ const CheckoutForm: React.FC = () => {
       if (paymentError) {
         setError(paymentError.message || 'Payment failed.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        const response = await axios.post('http://localhost:5000/api/payments/save-payment', {
+        const response = await axios.post(`${API_URL}/api/payments/save-payment`, {
           stripePaymentId: paymentIntent.id,
           amount: paymentIntent.amount,
         });

@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, List, ListItem, ListItemText, CircularProgress } from '@mui/material';
 import axios from 'axios';
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/notifications', { withCredentials: true })
+    axios.get(`${API_URL}/api/notifications`, { withCredentials: true })
       .then(response => {
         setNotifications(response.data);
         setLoading(false);

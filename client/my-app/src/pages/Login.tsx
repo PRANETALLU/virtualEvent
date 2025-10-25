@@ -4,6 +4,11 @@ import axios from "axios";
 import { useUser } from "../context/UserContext";
 import { Container, Box, TextField, Button, Typography, CircularProgress } from "@mui/material";
 
+
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +24,7 @@ const Login = () => {
     try {
       // 1️⃣ Authenticate user and get token
       const { data } = await axios.post(
-        "http://localhost:5000/user/login",
+        `${API_URL}/user/login`,
         { username, password },
         {
           withCredentials: true,

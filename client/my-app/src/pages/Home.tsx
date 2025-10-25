@@ -49,6 +49,9 @@ const eventCategories = [
   "Food", "Health", "Community", "Travel", "Gaming", "Other"
 ];
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Home: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
@@ -70,7 +73,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { data } = await axios.get("http://localhost:5000/events");
+        const { data } = await axios.get(`${API_URL}/events`);
         setEvents(data);
       } catch (error) {
         console.error("Error fetching events:", error);
@@ -82,7 +85,7 @@ const Home: React.FC = () => {
     const fetchRecommendations = async () => {
       if (userInfo?.id) {
         try {
-          const { data } = await axios.get(`http://localhost:5000/user/${userInfo.id}/recommendations`);
+          const { data } = await axios.get(`${API_URL}/user/${userInfo.id}/recommendations`);
           setRecommendedEvents(data);
         } catch (error) {
           console.error("Error fetching recommendations:", error);
@@ -99,7 +102,7 @@ const Home: React.FC = () => {
 
   const handleCreateEvent = async () => {
     try {
-      const { data } = await axios.post("http://localhost:5000/events/create", newEvent, { withCredentials: true });
+      const { data } = await axios.post(`${API_URL}/events/create`, newEvent, { withCredentials: true });
       setEvents([...events, data.event]);
       setOpen(false);
       window.location.reload();
@@ -110,7 +113,7 @@ const Home: React.FC = () => {
 
   const handleDeleteEvent = async (deletedEventId: string) => {
     try {
-      await axios.delete(`http://localhost:5000/events/${deletedEventId}`, { withCredentials: true });
+      await axios.delete(`${API_URL}/events/${deletedEventId}`, { withCredentials: true });
       setEvents((prevEvents) => prevEvents.filter((event) => event._id !== deletedEventId));
     } catch (error) {
       console.error("Error deleting event:", error);

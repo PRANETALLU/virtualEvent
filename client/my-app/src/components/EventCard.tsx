@@ -61,6 +61,9 @@ const eventCategories = [
   "Other",
 ];
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+
 const EventCard = ({
   _id,
   title,
@@ -101,7 +104,7 @@ const EventCard = ({
   
       try {
         const response = await axios.post(
-          `http://localhost:5000/api/payments/payment-status`, 
+          `${API_URL}/api/payments/payment-status`, 
           { 
             eventId: _id,  
             userId: userInfo?.id 
@@ -138,7 +141,7 @@ const EventCard = ({
 
   const handleEditSave = async () => {
     try {
-      await axios.put(`http://localhost:5000/events/${_id}`, editedEvent, {
+      await axios.put(`${API_URL}/events/${_id}`, editedEvent, {
         withCredentials: true,
       });
       setOpenEditDialog(false);
@@ -164,7 +167,7 @@ const EventCard = ({
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/events/${_id}/attendees`,
+        `${API_URL}/events/${_id}/attendees`,
         {},
         { withCredentials: true }
       );
@@ -180,7 +183,7 @@ const EventCard = ({
   const startLivestream = async () => {
     try {
       await axios.post(
-        `http://localhost:5000/events/${_id}/livestream/start`,
+        `${API_URL}/events/${_id}/livestream/start`,
         {},
         { withCredentials: true }
       );
@@ -193,7 +196,7 @@ const EventCard = ({
   const handleUnlockLivestream = async () => {
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/payments/checkout`,
+        `${API_URL}/api/payments/checkout`,
         { amount: price * 100, eventId: _id, userId: userInfo?.id},
         { withCredentials: true }
       );

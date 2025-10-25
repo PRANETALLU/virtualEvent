@@ -9,6 +9,9 @@ interface Event {
   tags: string[];
 }
 
+const WS_URL = import.meta.env.VITE_WS_URL;
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Recommendations: React.FC = () => {
   const { userInfo } = useUser();
   const [recommendations, setRecommendations] = useState<Event[]>([]);
@@ -18,7 +21,7 @@ const Recommendations: React.FC = () => {
       if (userInfo?.id) {
         try {
           const { data } = await axios.get(
-            `http://localhost:5000/user/${userInfo.id}/recommendations`,
+            `${API_URL}/user/${userInfo.id}/recommendations`,
             {
               headers: { Authorization: `Bearer ${userInfo.token}` },
             }
