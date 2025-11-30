@@ -53,7 +53,7 @@ const LiveStream = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const socket = new WebSocket(`${WS_URL}/ws`);
+    const socket = new WebSocket(WS_URL);
 
     socket.onopen = () => {
       console.log("WebSocket connected!");

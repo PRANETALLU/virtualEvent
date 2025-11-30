@@ -1,32 +1,21 @@
-# Stage 1: Build Stage (optional for TypeScript)
-FROM node:20 AS build
-
-# Set working directory
-WORKDIR /server
-
-# Copy package files first (allows caching)
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the source code
-COPY . .
-
-# If using TypeScript, build it
-# RUN npm run build
-
-# Stage 2: Production Stage
+# Use official Node.js LTS image
 FROM node:20
 
 # Set working directory
 WORKDIR /server
 
-# Copy everything from the build stage
-COPY --from=build /server /server
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install --production
 
-# Expose the port your server uses
+# Copy the rest of your source code
+COPY . .
+
+# Copy .env (optional, if using dotenv in code)
+COPY .env ./
+
+# Expose server port
 EXPOSE 5000
 
-# Start the backend server
-CMD ["node", "src/index.js"]  # replace with your entry file if different
+# Start server
+CMD ["node", "src/index.js"]

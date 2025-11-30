@@ -226,3 +226,51 @@ npm test
 ## Contact
 For any inquiries, please contact:
 - Faculty Advisor: demasc@ufl.edu
+
+
+## Docker
+docker build -t virtual-backend .
+docker run -p 5000:5000 virtual-backend
+
+docker build -t virtual-frontend .
+docker run -p 3000:80 virtual-frontend
+
+
+## Github Auto Push
+name: Build and Push to ECR
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        env:
+          ECR_REGISTRY: 965984445335.dkr.ecr.us-east-1.amazonaws.com
+          ECR_REPOSITORY: virtualevent/backend
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Image digest
+        run: echo "Image pushed successfully!"
