@@ -1,276 +1,174 @@
 # Virtual Event Platform
 
-## Senior Project Spring 2025
-A comprehensive virtual event platform enabling real-time interaction, event management, and live streaming capabilities.
+Full-stack web application for discovering, registering for, and attending online events. Organizers can broadcast live video to attendees; participants share an event-scoped chat with optional file attachments. Paid events use **Stripe Checkout**; authentication uses **JWT** in **HTTP-only cookies** with a **MongoDB** persistence layer.
 
-## Project Overview
-This platform addresses the growing need for virtual event solutions, providing a seamless experience for event organizers and attendees. Built with modern web technologies, it offers features like live streaming, real-time chat, and event management tools.
+Originally developed as a capstone-style team project; this document reflects the **implemented** behavior in the repository, not aspirational features.
 
-## User Stories
+---
 
-### Event Organizers
-- As an event organizer, I want to create and manage virtual events
-- As an organizer, I want to set event details (title, description, date, time)
-- As an organizer, I want to control who can attend my events
-- As an organizer, I want to track event attendance
-- As an organizer, I want to manage live streaming settings
-- As an organizer, I want to view analytics about my events
+## What it does
 
-### Event Attendees
-- As an attendee, I want to browse available events
-- As an attendee, I want to register for events
-- As an attendee, I want to participate in live streams
-- As an attendee, I want to interact with other participants via chat
-- As an attendee, I want to view my upcoming and past events
-- As an attendee, I want to receive recommendations for events
+| Area | Behavior (as implemented) |
+|------|---------------------------|
+| **Accounts** | Sign up, login, logout; JWT issued on login and read from cookies on protected API calls. |
+| **Password reset** | Forgot-password flow with email token (Nodemailer + Gmail-compatible SMTP). |
+| **Events** | CRUD-style operations: create events (title, description, schedule, venue, price, category), list, detail view, update/delete for organizers, join as attendee. |
+| **Live video** | **WebRTC** (`RTCPeerConnection`) for organizer → attendee streams; **native WebSocket** (`ws`) on the server for signaling (SDP offers/answers, ICE candidates) and stream lifecycle (`stream-started` / `stream-stopped`). |
+| **Chat** | Real-time messages over the same WebSocket server; in-memory history (last ~50 on join, ring buffer ~200 per room on the server). File metadata and uploads for chat attachments use the REST API and local disk storage under `uploads/`. |
+| **Payments** | Stripe Checkout session creation; success callback records a **Payment** document and sends confirmation email. |
+| **Recommendations** | Rule-based: events whose **category** appears in the user’s **preferences** array, excluding events the user already joined. |
+| **Notifications** | MongoDB-backed notifications with read/unread state (`/api/notifications`). |
+| **Profiles** | Bio, interests, avatar image (Multer, local `uploads/avatars`). |
 
-### Platform Features
+Non-goals in the current codebase: there is **no** Redis cache, **no** AWS S3 integration (media is local filesystem), **no** Redux store, and **no** production APM hooks (e.g. New Relic/Sentry) in source. Some npm dependencies (e.g. `mediasoup`, `socket.io` on the server) are present but the live path uses **`ws` + hand-rolled signaling** in `server/src/index.js`.
 
-#### Event Management
-- Create and manage virtual events
-- Set event details (title, description, date, time, venue)
-- Categorize events (Music, Arts, Sports, Tech, etc.)
-- Price setting (free or paid events)
-- Event analytics and reporting
-- Attendee management
+---
 
-#### Live Streaming
-- WebRTC-based live streaming
-- Real-time video and audio broadcasting
-- Screen sharing capabilities
-- Stream quality management
-- Recording capabilities
-- Chat moderation tools
+## Architecture
 
-#### User Features
-- User authentication and authorization
-- Profile management
-- Event attendance tracking
-- Personalized event recommendations
-- Payment integration for paid events
-- Social sharing capabilities
-
-## Technology Stack
-
-### Frontend
-- React.js with TypeScript
-- Material-UI (MUI) for UI components
-- WebRTC for live streaming
-- Socket.io for real-time communication
-- Redux for state management
-- Axios for API requests
-
-### Backend
-- Node.js/Express.js
-- MongoDB for database
-- Socket.io for WebSocket server
-- JWT for authentication
-- AWS S3 for media storage
-- Redis for caching
-
-## Directory
-
-# Front-end pages
-
-1. Welcome/
-   - Welcome.tsx (Landing page)
-
-2. Auth/
-   - Login.tsx
-   - Signup.tsx
-
-3. Events/
-   - Home.tsx (Dashboard)
-   - EventDetails.tsx
-   - Search.tsx
-   - LiveStream.tsx
-
-4. User/
-   - Profile.tsx
-   - Recommendations.tsx
-
-5. Payments/
-   - Payments.tsx
-
-6. Notifications/
-   - Notifications.tsx
-
-# Back-end routes
-
-1. userRoutes/
-   - Authentication
-   - Profile management
-   - User preferences
-
-2. eventRoutes/
-   - Event CRUD operations
-   - Attendee management
-   - Live streaming endpoints
-
-3. paymentRoutes/
-   - Payment processing
-   - Transaction history
-
-4. notificationRoutes/
-   - User notifications
-   - Event reminders
-
-# Core Files
-
-1. App.tsx (Root application component)
-2. index.html (Entry point)
-3. UserContext.tsx (User authentication context)
-4. Components/
-   - Header.tsx
-   - EventCard.tsx
-   - Chat.tsx
-
-
-# shared components
-
-1. Layout/
-   - Header
-   - Navigation
-   - Footer
-
-2. UI Components/
-   - Forms
-   - Cards
-   - Buttons
-   - Loading states
-
-## Getting Started
-
-### Prerequisites
-```bash
-# Required software
-- Node.js (v14 or higher)
-- MongoDB
-- Redis
-- npm or yarn
+```
+Browser (React + Vite)
+  ├── HTTPS REST  → Express API (Mongoose, JWT cookies, Stripe)
+  └── WebSocket   → Same Node process (/ws) for WebRTC signaling + chat
+MongoDB           ← persistent users, events, payments, notifications
+Local disk        ← avatars, event-scoped uploads
 ```
 
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/PRANETALLU/virtualEvent.git
-cd virtualEvent
+- **Frontend:** `client/my-app` — React 18, TypeScript, Vite, MUI, React Router, Axios, Stripe.js.
+- **Backend:** `server` — Express 4, Mongoose 8, `bcryptjs`, `jsonwebtoken`, `stripe`, `nodemailer`, `multer`, **`ws`** (WebSocket).
 
-# Install backend dependencies
+---
+
+## Repository layout
+
+| Path | Role |
+|------|------|
+| `server/src/index.js` | Express app, static `/uploads`, Multer routes, **WebSocket server** on `/ws` |
+| `server/src/routes/` | `userRoutes`, `eventRoutes`, `paymentRoutes`, `notificationsRoutes` |
+| `server/src/controllers/` | Business logic for users, events, payments, notifications |
+| `server/src/models/` | Mongoose schemas (`User`, `Event`, `Payment`, `Notification`, …) |
+| `server/src/middleware/authMiddleware.js` | JWT verification from cookie |
+| `client/my-app/src/` | SPA: `App.tsx`, `pages/`, `components/`, `context/UserContext.tsx` |
+| `server/Dockerfile`, `client/my-app/Dockerfile` | Container images for API + static SPA (Nginx) |
+
+---
+
+## API surface (summary)
+
+- **`/user`** — signup, login, logout, profile, preferences, recommendations, forgot/reset password.
+- **`/events`** — list, get by id, create/update/delete (protected), add attendee, livestream start/stop/get URL (protected).
+- **`/api/payments`** — Stripe checkout and success handling.
+- **`/api/notifications`** — list and mark read (protected).
+- **WebSocket** `ws://…/ws` — JSON messages: `join-room`, `offer`, `answer`, `ice-candidate`, `chat-message`, stream events (see `server/src/index.js`).
+
+---
+
+## Prerequisites
+
+- **Node.js** 18+ (Dockerfiles use Node 20 LTS).
+- **MongoDB** (local or Atlas).
+- **Stripe** account (test keys are fine for development).
+- SMTP credentials if you use password reset and transactional email (Gmail app password or compatible SMTP).
+
+---
+
+## Local development
+
+### 1. Backend
+
+```bash
 cd server
 npm install
+```
 
-# Install frontend dependencies
+Create `server/.env` (names used in code):
+
+```env
+MONGO_URI=mongodb://localhost:27017/virtual-event
+SECRET_KEY=your-jwt-secret
+STRIPE_SECRET_KEY=sk_test_...
+YOUR_DOMAIN=http://localhost:5173
+EMAIL_USER=your-smtp-user
+EMAIL_PASS=your-smtp-password
+```
+
+```bash
+npm run dev
+# API and WebSocket on port 5000 (see src/index.js)
+```
+
+### 2. Frontend
+
+```bash
 cd client/my-app
 npm install
 ```
 
-### Environment Setup
-```bash
-# Create .env file in server directory
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
-PORT=5000
-CORS_ORIGIN=http://localhost:5173
-AWS_ACCESS_KEY=your_aws_access_key
-AWS_SECRET_KEY=your_aws_secret_key
-REDIS_URL=your_redis_url
+Create `client/my-app/.env` (Vite variables):
+
+```env
+VITE_API_URL=http://localhost:5000
+VITE_WS_URL=ws://localhost:5000/ws
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ```
 
-## Project Timeline
-- **Sprint 1**: User Authentication & Basic UI (2 weeks)
-- **Sprint 2**: Event Management Features (3 weeks)
-- **Sprint 3**: Live Streaming Implementation (4 weeks)
-- **Sprint 4**: Chat & Interactive Features (3 weeks)
-- **Sprint 5**: Testing & Refinement (2 weeks)
+```bash
+npm run dev
+# Default Vite dev server: http://localhost:5173
+```
 
-## Development Team
-- Tommy Lam Luu: UI/UX Designer, Front End Dev, Documentation
-- Ansh
-- Pranet
-- Nikhil
+CORS in the server allows `http://localhost:5173` and `http://localhost:3000`.
+
+---
 
 ## Testing
-```bash
-# Run frontend tests
-cd client/my-app
-npm test
 
-# Run backend tests
+Backend uses **Jest** + **Supertest**:
+
+```bash
 cd server
 npm test
 ```
 
-## Deployment
-- Frontend deployed on Vercel
-- Backend deployed on AWS EC2
-- Database hosted on MongoDB Atlas
-- Media storage on AWS S3
+> Note: `server/src/__tests__/event.test.js` imports `../app`; there is no `app.js` module in the tree—only `index.js` exports `{ app, server }`. You may need a thin `app.js` re-export or to point tests at `index` for event tests to run cleanly.
 
-## Monitoring & Analytics
-- Application monitoring with New Relic
-- Error tracking with Sentry
-- User analytics with Google Analytics
-
-## Future Enhancements
-1. Mobile application development
-2. Advanced analytics dashboard
-3. AI-powered event recommendations
-4. Virtual reality integration
-5. Breakout room functionality
-
-
-## Acknowledgments
-- Faculty Advisor: Carol Demas
-
-## Contact
-For any inquiries, please contact:
-- Faculty Advisor: demasc@ufl.edu
-
+---
 
 ## Docker
-docker build -t virtual-backend .
-docker run -p 5000:5000 virtual-backend
 
-docker build -t virtual-frontend .
-docker run -p 3000:80 virtual-frontend
+Multi-stage **frontend** image (Node build → Nginx on port 80): `client/my-app/Dockerfile`.
 
+**Backend** image: `server/Dockerfile` (Node 20, exposes 5000).
 
-## Github Auto Push
-name: Build and Push to ECR
+Example (from repo root, after configuring env as required by each Dockerfile):
 
-on:
-  push:
-    branches: [ main ]
+```bash
+docker build -t virtual-event-api ./server
+docker run -p 5000:5000 virtual-event-api
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+docker build -t virtual-event-web ./client/my-app
+docker run -p 8080:80 virtual-event-web
+```
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+---
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+## Deployment notes
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+There is **no** GitHub Actions workflow in this repository (no `.github/` folder). Ship the **Docker** images above to any host you control (VM, container service, or Kubernetes). For production:
 
-      - name: Build, tag, and push image to ECR
-        env:
-          ECR_REGISTRY: 965984445335.dkr.ecr.us-east-1.amazonaws.com
-          ECR_REPOSITORY: virtualevent/backend
-          IMAGE_TAG: latest
-        run: |
-          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+- Set **`VITE_API_URL`** and **`VITE_WS_URL`** to your public API and WebSocket URLs (use `wss://` behind TLS).
+- Configure **`MONGO_URI`**, **`SECRET_KEY`**, Stripe, and SMTP on the API container or process manager.
+- WebSocket and HTTP must reach the **same** Node process (or a correctly configured reverse proxy with upgrade support for `/ws`).
 
-      - name: Image digest
-        run: echo "Image pushed successfully!"
+---
+
+## Team & acknowledgments
+
+- **Development team:** Tommy Lam Luu, Ansh, Pranet, Nikhil (roles as coordinated for the academic project).
+- **Faculty advisor:** Carol Demas (demasc@ufl.edu).
+
+---
+
+## License
+
+See repository default; add a `LICENSE` file if you intend open-source distribution.
